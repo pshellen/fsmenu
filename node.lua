@@ -249,6 +249,9 @@ function node.render()
     surface:draw(0, 0, w, h)
     if not state or not state.manifest then
         centered(0, w, h*.45, "Waiting for menu data…", math.min(w,h)*.05)
+        if config.debug and state and state.error then
+            centered(w*.08, w*.92, h*.54, tostring(state.error), math.min(w,h)*.018, {0.72,0.08,0.08,1})
+        end
     else
         local manifest = state.manifest
         local layout = manifest.screen and manifest.screen.layout or config.screen_id

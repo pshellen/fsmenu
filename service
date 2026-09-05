@@ -30,7 +30,7 @@ def read_json(path, default=None):
     try:
         with open(path, "r") as handle:
             return json.load(handle)
-    except (OSError, ValueError):
+    except (IOError, OSError, ValueError):
         return default
 
 
@@ -91,6 +91,7 @@ def cache_media(url, version):
         os.rename(temp, final)
         return name
     except Exception as exc:
+        failed = False
         try:
             os.unlink(temp)
         except OSError:
@@ -161,11 +162,12 @@ def main():
                 atomic_json(STATE, {"ok": True, "checked_at": int(time.time()), "etag": etag, "error": None, "manifest": manifest})
                 log("published manifest", manifest.get("manifest_version"))
         except Exception as exc:
+            failed = True
             old_state.update({"ok": False, "checked_at": int(time.time()), "error": str(exc)[:300]})
             atomic_json(STATE, old_state)
             log("manifest refresh failed; retaining last valid data:", exc)
         interval = max(60, min(86400, int(config.get("refresh_seconds", 600) or 600)))
-        time.sleep(interval)
+        time.sleep(min(interval, 60) if failed else interval)
 
 
 if __name__ == "__main__":
