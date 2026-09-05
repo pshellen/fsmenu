@@ -4,6 +4,8 @@ from __future__ import print_function
 import hashlib
 import json
 import os
+import errno
+import sys
 import time
 try:
     from urllib.parse import urlencode, urlparse
@@ -17,6 +19,11 @@ CACHE = ROOT
 STATE = os.path.join(ROOT, "state.json")
 CONFIG = os.path.join(ROOT, "config.json")
 ALLOWED_MEDIA = {"image", "video"}
+
+
+def log(*parts):
+    sys.stdout.write(" ".join(str(part) for part in parts) + "\n")
+    sys.stdout.flush()
 
 
 def read_json(path, default=None):
@@ -88,7 +95,7 @@ def cache_media(url, version):
             os.unlink(temp)
         except OSError:
             pass
-        print("media fetch failed:", url, exc, flush=True)
+        log("media fetch failed:", url, exc)
         return None
 
 
@@ -129,7 +136,11 @@ def fetch(config, etag):
 
 
 def main():
-    os.makedirs(CACHE, exist_ok=True)
+    try:
+        os.makedirs(CACHE)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST:
+            raise
     etag = None
     last_config_fingerprint = None
     while True:
@@ -148,11 +159,11 @@ def main():
             else:
                 manifest = enrich_media(validate_manifest(manifest, config.get("screen_id", "combo")), config.get("show_ads", True))
                 atomic_json(STATE, {"ok": True, "checked_at": int(time.time()), "etag": etag, "error": None, "manifest": manifest})
-                print("published manifest", manifest.get("manifest_version"), flush=True)
+                log("published manifest", manifest.get("manifest_version"))
         except Exception as exc:
             old_state.update({"ok": False, "checked_at": int(time.time()), "error": str(exc)[:300]})
             atomic_json(STATE, old_state)
-            print("manifest refresh failed; retaining last valid data:", exc, flush=True)
+            log("manifest refresh failed; retaining last valid data:", exc)
         interval = max(60, min(86400, int(config.get("refresh_seconds", 600) or 600)))
         time.sleep(interval)
 
