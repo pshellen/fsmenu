@@ -19,6 +19,8 @@ CACHE = ROOT
 STATE = os.path.join(ROOT, "state.json")
 CONFIG = os.path.join(ROOT, "config.json")
 ALLOWED_MEDIA = {"image", "video"}
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv"}
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 try:
     STRING_TYPES = (basestring,)
 except NameError:
@@ -77,6 +79,18 @@ def media_filename(url, version):
     return "media-" + digest[:24] + ext
 
 
+def detect_media_type(url, declared):
+    try:
+        ext = os.path.splitext(urlparse(url).path)[1].lower()
+    except Exception:
+        ext = ""
+    if ext in VIDEO_EXTENSIONS:
+        return "video"
+    if ext in IMAGE_EXTENSIONS:
+        return "image"
+    return declared if declared in ALLOWED_MEDIA else None
+
+
 def cache_media(url, version):
     if not isinstance(url, STRING_TYPES) or not url.startswith(("https://", "http://")):
         return None
@@ -115,7 +129,9 @@ def enrich_media(manifest, show_ads):
     ads = []
     if show_ads:
         for ad in manifest["advertisements"]:
-            if active_on(ad, today) and ad.get("media_type") in ALLOWED_MEDIA:
+            media_type = detect_media_type(ad.get("url"), ad.get("media_type"))
+            if active_on(ad, today) and media_type in ALLOWED_MEDIA:
+                ad["media_type"] = media_type
                 ad["local_media"] = cache_media(ad.get("url"), ad.get("content_version"))
                 if ad["local_media"]:
                     ads.append(ad)
