@@ -93,7 +93,7 @@ local function scaled_font_size(size)
     elseif font_region == "alacarte" then
         configured = tonumber(config.alacarte_font_scale_percent) or legacy
     end
-    local percent = math.max(75, math.min(125, configured))
+    local percent = math.max(75, math.min(250, configured))
     return size * percent / 100
 end
 

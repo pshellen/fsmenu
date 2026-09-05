@@ -2,6 +2,14 @@
 
 Live, resilient menu-board package for the schema-version-1 FSCinema manifest. It supports `combo`, `alacarte`, and `full` screens at 3840×1080 dual-HD horizontal, 2160×3840 4K vertical, 1920×1080 HD horizontal, and 3840×2160 4K horizontal.
 
+## Raspberry Pi compatibility
+
+- **Raspberry Pi 3:** Compatible for 1920×1080 playback. Use H.264 advertisement videos no larger than 1920×1080.
+- **Raspberry Pi 4:** Compatible with 1920×1080, 3840×1080 dual-HD, and tested 4K-capable display configurations.
+- **Raspberry Pi 5:** Compatible and recommended for dual-HD, 4K, and more demanding video playback.
+
+Actual maximum output resolution depends on the info-beamer OS release, HDMI configuration, connected display, and video codec. Validate dual-display and 4K modes on the intended hardware before deployment.
+
 The service sends `If-None-Match`, accepts empty 304 responses, validates new JSON before publishing it, atomically updates player state, caches media by URL plus content version, and retains the last valid manifest when a refresh fails. The last-known-good manifest and its media are also copied to info-beamer's persistent `SCRATCH` storage and restored before the first network request after a restart. Combo images use each combo's `image_url` and appear in the image area above the name, description, and price. A neutral placeholder is used when `image_url` is null or empty.
 
 ## Hosted import
@@ -20,8 +28,10 @@ The token field is visually masked in Hosted but is ultimately delivered to the 
 - **Display profile:** Must match the intended canvas. The player letterboxes safely if the physical output differs.
 - **Playback mode:** `Configured screen` renders the selected manifest normally. `Alternate combo / a la carte` uses a `full` manifest and switches between full-screen combo and à-la-carte pages; configure `screen_id=full` and typically use 1920×1080.
 - **Page duration:** Number of seconds each page remains visible in alternating mode; defaults to 25 seconds.
-- **Combo font size:** Independently scales combo names, descriptions, and prices from 75% to 125%; defaults to 100%.
-- **A la carte font size:** Independently scales category headings, item names, and prices from 75% to 125%; defaults to 100%.
+- **Combo font size:** Independently scales combo names, descriptions, and prices from 75% to 250%; defaults to 100%.
+- **A la carte font size:** Independently scales category headings, item names, and prices from 75% to 250%; defaults to 100%.
+
+Values above 125% are provided for on-device assessment and may cause clipping or vertical overlap on dense menus. Increase each screen type gradually and verify the complete rotation before rollout.
 - **Show advertisements:** Downloads and rotates active, in-date advertising media in the advertisement region. If no valid advertisement is available, the region collapses and the menu uses the available space.
 - **Debug status:** Shows LIVE/STALE and the current manifest version in the upper-left corner.
 
@@ -55,6 +65,6 @@ Run `python3 -m unittest discover -s tests -v`. For visual testing, run `python3
 
 The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`.
 
-## Version 1.1.1
+## Version 1.1.3
 
 Python 2.7 service compatibility fix, plus schema validation, ETag revalidation, offline retention, responsive layout profiles, advertisement rotation, and combo image slots.

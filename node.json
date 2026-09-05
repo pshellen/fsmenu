@@ -59,7 +59,7 @@
       "type": "integer",
       "default": 100,
       "min": 75,
-      "max": 125
+      "max": 250
     },
     {
       "title": "A la carte font size (%)",
@@ -67,7 +67,7 @@
       "type": "integer",
       "default": 100,
       "min": 75,
-      "max": 125
+      "max": 250
     },
     {
       "title": "Refresh interval",
