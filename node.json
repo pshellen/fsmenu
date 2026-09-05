@@ -54,8 +54,16 @@
       "max": 300
     },
     {
-      "title": "Font size (%)",
-      "name": "font_scale_percent",
+      "title": "Combo font size (%)",
+      "name": "combo_font_scale_percent",
+      "type": "integer",
+      "default": 100,
+      "min": 75,
+      "max": 125
+    },
+    {
+      "title": "A la carte font size (%)",
+      "name": "alacarte_font_scale_percent",
       "type": "integer",
       "default": 100,
       "min": 75,

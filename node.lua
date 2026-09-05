@@ -10,8 +10,9 @@ local placeholder = resource.create_colored_texture(1, 1, 1, 1)
 local saber_glow_wide = resource.create_colored_texture(0.03, 0.49, 0.82, 0.16)
 local saber_glow = resource.create_colored_texture(0.12, 0.78, 1, 0.34)
 local saber_core = resource.create_colored_texture(0.82, 0.97, 1, 0.92)
-local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, font_scale_percent = 100, debug = false }
+local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, debug = false }
 local state = nil
+local font_region = nil
 local images = {}
 local ad_media = {}
 local ad_media_errors = {}
@@ -85,7 +86,14 @@ util.json_watch("state.json", function(value)
 end)
 
 local function scaled_font_size(size)
-    local percent = math.max(75, math.min(125, tonumber(config.font_scale_percent) or 100))
+    local legacy = tonumber(config.font_scale_percent) or 100
+    local configured = legacy
+    if font_region == "combo" then
+        configured = tonumber(config.combo_font_scale_percent) or legacy
+    elseif font_region == "alacarte" then
+        configured = tonumber(config.alacarte_font_scale_percent) or legacy
+    end
+    local percent = math.max(75, math.min(125, configured))
     return size * percent / 100
 end
 
@@ -180,6 +188,7 @@ local function render_advertisement(manifest, w, h)
 end
 
 local function render_combo(manifest, w, h, with_ads)
+    font_region = "combo"
     local combos = sorted_available(manifest.combos)
     local margin, gap = w * 0.018, w * 0.008
     local grid_top
@@ -214,6 +223,7 @@ local function render_combo(manifest, w, h, with_ads)
 end
 
 local function render_categories(manifest, w, h)
+    font_region = "alacarte"
     local source = sorted_available(manifest.categories)
     local categories, drinks = {}, {}
     for _, category in ipairs(source) do
@@ -323,6 +333,7 @@ function node.render()
             render_saber_edges(w,h,false,has_ad and h*.5 or 0)
         elseif layout == "alacarte" then render_categories(manifest,w,h); render_saber_edges(w,h,false)
         else render_full(manifest,w,h) end
+        font_region = nil
         if config.debug then
             text(w*.01,h*.01,(state.ok and "LIVE" or "STALE").."  "..tostring(manifest.manifest_version or ""),math.min(w,h)*.012,state.ok and 0 or 0.8,state.ok and 0.45 or 0.1,0.1,1)
             if last_ad_error then
