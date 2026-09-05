@@ -1,0 +1,77 @@
+{
+  "name": "FSCinema Menu Board",
+  "permissions": {
+    "network": "Fetches the configured menu manifest and its public image/video assets."
+  },
+  "options": [
+    {
+      "title": "Manifest endpoint",
+      "name": "endpoint",
+      "type": "string",
+      "default": "https://emcxmnrhplzlbsowxeuk.supabase.co/functions/v1/menu-board-manifest"
+    },
+    {
+      "title": "Location ID",
+      "name": "location_id",
+      "type": "string",
+      "default": "2dca9baf-cdab-4406-9947-053d20744971"
+    },
+    {
+      "title": "Screen",
+      "name": "screen_id",
+      "type": "select",
+      "options": [["combo", "Combo"], ["alacarte", "A la carte"], ["full", "Full"]],
+      "default": "combo"
+    },
+    {
+      "title": "Bearer token",
+      "name": "token",
+      "type": "string",
+      "ui_type": "password",
+      "default": "",
+      "placeholder": "MENU_MANIFEST_TOKEN"
+    },
+    {
+      "title": "Display profile",
+      "name": "display_profile",
+      "type": "select",
+      "options": [["3840x1080", "Dual HD horizontal (3840 × 1080)"], ["2160x3840", "4K vertical (2160 × 3840)"], ["1920x1080", "HD horizontal (1920 × 1080)"], ["3840x2160", "4K horizontal (3840 × 2160)"]],
+      "default": "3840x1080"
+    },
+    {
+      "title": "Playback mode",
+      "name": "playback_mode",
+      "type": "select",
+      "options": [["static", "Configured screen"], ["alternate", "Alternate combo / a la carte"]],
+      "default": "static"
+    },
+    {
+      "title": "Page duration",
+      "name": "page_duration_seconds",
+      "type": "integer",
+      "default": 25,
+      "min": 5,
+      "max": 300
+    },
+    {
+      "title": "Refresh interval",
+      "name": "refresh_seconds",
+      "type": "integer",
+      "default": 600,
+      "min": 60,
+      "max": 86400
+    },
+    {
+      "title": "Show advertisements",
+      "name": "show_ads",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "title": "Debug status",
+      "name": "debug",
+      "type": "boolean",
+      "default": false
+    }
+  ]
+}

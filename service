@@ -1,0 +1,161 @@
+#!/usr/bin/python2.7
+"""Fetch and validate menu manifests; atomically publish state for node.lua."""
+from __future__ import print_function
+import hashlib
+import json
+import os
+import time
+try:
+    from urllib.parse import urlencode, urlparse
+except ImportError:
+    from urllib import urlencode
+    from urlparse import urlparse
+import requests
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+CACHE = ROOT
+STATE = os.path.join(ROOT, "state.json")
+CONFIG = os.path.join(ROOT, "config.json")
+ALLOWED_MEDIA = {"image", "video"}
+
+
+def read_json(path, default=None):
+    try:
+        with open(path, "r") as handle:
+            return json.load(handle)
+    except (OSError, ValueError):
+        return default
+
+
+def atomic_json(path, value):
+    tmp = path + ".tmp"
+    with open(tmp, "w") as handle:
+        json.dump(value, handle, separators=(",", ":"))
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.rename(tmp, path)
+
+
+def validate_manifest(value, expected_screen):
+    if not isinstance(value, dict) or value.get("schema_version") != 1:
+        raise ValueError("unsupported or missing schema_version")
+    for key in ("combos", "categories", "advertisements", "schedule"):
+        if not isinstance(value.get(key), list):
+            raise ValueError("%s must be an array" % key)
+    screen = value.get("screen")
+    location = value.get("location")
+    if not isinstance(screen, dict) or screen.get("id") != expected_screen:
+        raise ValueError("response screen.id does not match configuration")
+    if not isinstance(location, dict) or not location.get("id"):
+        raise ValueError("missing location")
+    return value
+
+
+def active_on(ad, today):
+    return (ad.get("active") is True and
+            (not ad.get("start_date") or ad["start_date"] <= today) and
+            (not ad.get("end_date") or ad["end_date"] >= today))
+
+
+def media_filename(url, version):
+    parsed = urlparse(url)
+    ext = os.path.splitext(parsed.path)[1].lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".mp4", ".mov", ".mkv"):
+        ext = ".bin"
+    digest = hashlib.sha256((url + "|" + str(version or "")).encode("utf-8")).hexdigest()
+    return "media-" + digest[:24] + ext
+
+
+def cache_media(url, version):
+    if not isinstance(url, str) or not url.startswith(("https://", "http://")):
+        return None
+    name = media_filename(url, version)
+    final = os.path.join(CACHE, name)
+    if os.path.isfile(final) and os.path.getsize(final) > 0:
+        return name
+    temp = final + ".part"
+    try:
+        response = requests.get(url, headers={"User-Agent": "FSCinema-info-beamer/1.0"}, timeout=45, stream=True)
+        response.raise_for_status()
+        with open(temp, "wb") as out:
+            for chunk in response.iter_content(1024 * 256):
+                if chunk:
+                    out.write(chunk)
+        os.rename(temp, final)
+        return name
+    except Exception as exc:
+        try:
+            os.unlink(temp)
+        except OSError:
+            pass
+        print("media fetch failed:", url, exc, flush=True)
+        return None
+
+
+def enrich_media(manifest, show_ads):
+    today = time.strftime("%Y-%m-%d")
+    for combo in manifest["combos"]:
+        combo["local_image"] = cache_media(combo.get("image_url"), combo.get("content_version"))
+    for category in manifest["categories"]:
+        category["local_image"] = cache_media(category.get("image_url"), category.get("content_version"))
+        for item in category.get("items", []):
+            item["local_image"] = cache_media(item.get("image_url"), item.get("content_version"))
+    ads = []
+    if show_ads:
+        for ad in manifest["advertisements"]:
+            if active_on(ad, today) and ad.get("media_type") in ALLOWED_MEDIA:
+                ad["local_media"] = cache_media(ad.get("url"), ad.get("content_version"))
+                if ad["local_media"]:
+                    ads.append(ad)
+    manifest["advertisements"] = sorted(ads, key=lambda x: (x.get("display_order", 0), x.get("name", "")))
+    return manifest
+
+
+def fetch(config, etag):
+    endpoint = str(config.get("endpoint", "")).strip()
+    params = urlencode({"location_id": config.get("location_id", ""), "screen_id": config.get("screen_id", "combo")})
+    url = endpoint + ("&" if "?" in endpoint else "?") + params
+    headers = {"Accept": "application/json", "User-Agent": "FSCinema-info-beamer/1.0"}
+    token = str(config.get("token", "")).strip()
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    if etag:
+        headers["If-None-Match"] = etag
+    response = requests.get(url, headers=headers, timeout=30)
+    if response.status_code == 304:
+        return etag, None, True
+    response.raise_for_status()
+    return response.headers.get("ETag"), response.json(), False
+
+
+def main():
+    os.makedirs(CACHE, exist_ok=True)
+    etag = None
+    last_config_fingerprint = None
+    while True:
+        config = read_json(CONFIG, {}) or {}
+        stable_config = {k: config.get(k) for k in ("endpoint", "location_id", "screen_id", "token", "show_ads")}
+        fingerprint = hashlib.sha256(json.dumps(stable_config, sort_keys=True).encode("utf-8")).hexdigest()
+        if fingerprint != last_config_fingerprint:
+            etag = None
+            last_config_fingerprint = fingerprint
+        old_state = read_json(STATE, {}) or {}
+        try:
+            etag, manifest, unchanged = fetch(config, etag)
+            if unchanged:
+                old_state.update({"ok": True, "checked_at": int(time.time()), "etag": etag, "error": None})
+                atomic_json(STATE, old_state)
+            else:
+                manifest = enrich_media(validate_manifest(manifest, config.get("screen_id", "combo")), config.get("show_ads", True))
+                atomic_json(STATE, {"ok": True, "checked_at": int(time.time()), "etag": etag, "error": None, "manifest": manifest})
+                print("published manifest", manifest.get("manifest_version"), flush=True)
+        except Exception as exc:
+            old_state.update({"ok": False, "checked_at": int(time.time()), "error": str(exc)[:300]})
+            atomic_json(STATE, old_state)
+            print("manifest refresh failed; retaining last valid data:", exc, flush=True)
+        interval = max(60, min(86400, int(config.get("refresh_seconds", 600) or 600)))
+        time.sleep(interval)
+
+
+if __name__ == "__main__":
+    main()
