@@ -13,6 +13,8 @@ local config = { display_profile = "3840x1080", playback_mode = "static", page_d
 local state = nil
 local images = {}
 local ad_media = {}
+local ad_media_errors = {}
+local last_ad_error = nil
 local last_manifest_version = nil
 
 local profiles = {
@@ -42,6 +44,8 @@ end
 local function load_media(manifest)
     images = {}
     ad_media = {}
+    ad_media_errors = {}
+    last_ad_error = nil
     local function load(path)
         if path and path ~= "" and not images[path] then
             local ok, result = pcall(resource.load_image, path)
@@ -58,10 +62,10 @@ local function load_media(manifest)
         if path and path ~= "" then
             if ad.media_type == "video" then
                 local ok, result = pcall(resource.load_video, {file=path, audio=false, looped=true, paused=false})
-                if ok then ad_media[path] = result end
+                if ok then ad_media[path] = {resource=result, media_type="video"} end
             else
                 local ok, result = pcall(resource.load_image, path)
-                if ok then ad_media[path] = result end
+                if ok then ad_media[path] = {resource=result, media_type="image"} end
             end
         end
     end
@@ -134,7 +138,22 @@ local function fit_image(path, x1, y1, x2, y2)
 end
 
 local function render_advertisement(manifest, w, h)
-    local ads = manifest.advertisements or {}
+    local ads = {}
+    for _, ad in ipairs(manifest.advertisements or {}) do
+        local holder = ad_media[ad.local_media]
+        if holder then
+            local ok, status, detail = pcall(function() return holder.resource:state() end)
+            if ok and (status == "loaded" or status == "paused" or status == "finished") then
+                ads[#ads + 1] = ad
+            elseif ok and status == "error" then
+                last_ad_error = tostring(detail or "unknown decoder error")
+                if not ad_media_errors[ad.local_media] then
+                    ad_media_errors[ad.local_media] = true
+                    print("advertisement media error " .. tostring(ad.local_media) .. ": " .. last_ad_error)
+                end
+            end
+        end
+    end
     if #ads == 0 then return false end
     local total = 0
     for _, ad in ipairs(ads) do total = total + math.max(1, tonumber(ad.duration_seconds) or 10) end
@@ -144,12 +163,9 @@ local function render_advertisement(manifest, w, h)
         cursor = cursor - math.max(1, tonumber(ad.duration_seconds) or 10)
         if cursor < 0 then selected = ad; break end
     end
-    local media = selected and ad_media[selected.local_media]
-    if media then
-        media:draw(0, 0, w, h)
-    else
-        surface:draw(0, 0, w, h)
-    end
+    local holder = selected and ad_media[selected.local_media]
+    if not holder then return false end
+    holder.resource:draw(0, 0, w, h)
     return true
 end
 
@@ -299,6 +315,9 @@ function node.render()
         else render_full(manifest,w,h) end
         if config.debug then
             text(w*.01,h*.01,(state.ok and "LIVE" or "STALE").."  "..tostring(manifest.manifest_version or ""),math.min(w,h)*.012,state.ok and 0 or 0.8,state.ok and 0.45 or 0.1,0.1,1)
+            if last_ad_error then
+                text(w*.01,h*.035,"AD VIDEO: "..last_ad_error,math.min(w,h)*.010,0.75,0.08,0.08,1)
+            end
         end
     end
     gl.popMatrix()

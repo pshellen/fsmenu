@@ -52,6 +52,6 @@ Run `python3 -m unittest discover -s tests -v`. For visual testing, run `python3
 
 The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`.
 
-## Version 1.0.7
+## Version 1.0.8
 
 Python 2.7 service compatibility fix, plus schema validation, ETag revalidation, offline retention, responsive layout profiles, advertisement rotation, and combo image slots.
