@@ -19,6 +19,10 @@ CACHE = ROOT
 STATE = os.path.join(ROOT, "state.json")
 CONFIG = os.path.join(ROOT, "config.json")
 ALLOWED_MEDIA = {"image", "video"}
+try:
+    STRING_TYPES = (basestring,)
+except NameError:
+    STRING_TYPES = (str,)
 
 
 def log(*parts):
@@ -74,7 +78,7 @@ def media_filename(url, version):
 
 
 def cache_media(url, version):
-    if not isinstance(url, str) or not url.startswith(("https://", "http://")):
+    if not isinstance(url, STRING_TYPES) or not url.startswith(("https://", "http://")):
         return None
     name = media_filename(url, version)
     final = os.path.join(CACHE, name)
