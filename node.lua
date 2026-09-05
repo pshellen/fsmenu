@@ -93,6 +93,30 @@ local function centered(x1, x2, y, value, size, color)
     text(x1 + math.max(0, (x2 - x1 - width) / 2), y, value, size, unpack(color or {0.05, 0.08, 0.13, 1}))
 end
 
+local function wrapped_centered(x1, x2, y, value, size, line_height, max_lines, color)
+    local words, lines, current = {}, {}, ""
+    for word in tostring(value or ""):gmatch("%S+") do words[#words + 1] = word end
+    local max_width = x2 - x1
+    for _, word in ipairs(words) do
+        local candidate = current == "" and word or current .. " " .. word
+        if current ~= "" and font:width(candidate, scaled_font_size(size)) > max_width then
+            lines[#lines + 1] = current
+            current = word
+        else
+            current = candidate
+        end
+    end
+    if current ~= "" then lines[#lines + 1] = current end
+    if #lines == 0 then lines[1] = "" end
+    while #lines > max_lines do
+        lines[max_lines] = lines[max_lines] .. " " .. lines[max_lines + 1]
+        table.remove(lines, max_lines + 1)
+    end
+    for index, line in ipairs(lines) do
+        centered(x1, x2, y + (index - 1) * line_height, line, size, color)
+    end
+end
+
 local function fit_image(path, x1, y1, x2, y2)
     local image = images[path]
     if not image then
@@ -156,7 +180,7 @@ local function render_combo(manifest, w, h, with_ads)
         fit_image(combo.local_image, x1, y1, x2, y2-info_h)
         local title_size = math.min(card_w*0.065, info_h*0.18)
         centered(x1, x2, y2-info_h+info_h*0.08, combo.name, title_size)
-        centered(x1+card_w*.04, x2-card_w*.04, y2-info_h+info_h*.39, combo.description or "", title_size*.55)
+        wrapped_centered(x1+card_w*.04, x2-card_w*.04, y2-info_h+info_h*.34, combo.description or "", title_size*.55, title_size*.72, 2)
         centered(x1, x2, y2-info_h+info_h*.70, money(combo), title_size*.92, {0.03, 0.22, 0.52, 1})
     end
     centered(0, w, h-footer*.85, manifest.screen.tax_disclaimer or "", math.min(w,h)*.014, {0.2,0.25,0.3,1})
