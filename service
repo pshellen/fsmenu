@@ -155,6 +155,13 @@ def detect_media_type(url, declared):
     return declared if declared in ALLOWED_MEDIA else None
 
 
+def selected_location_id(config):
+    selected = str(config.get("location", "") or "").strip()
+    if selected and selected != "custom":
+        return selected
+    return str(config.get("location_id", "") or "").strip()
+
+
 def cache_media(url, version):
     if not isinstance(url, STRING_TYPES) or not url.startswith(("https://", "http://")):
         return None
@@ -221,7 +228,7 @@ def enrich_media(manifest, show_ads):
 
 def fetch(config, etag):
     endpoint = str(config.get("endpoint", "")).strip()
-    params = urlencode({"location_id": config.get("location_id", ""), "screen_id": config.get("screen_id", "combo")})
+    params = urlencode({"location_id": selected_location_id(config), "screen_id": config.get("screen_id", "combo")})
     url = endpoint + ("&" if "?" in endpoint else "?") + params
     headers = {"Accept": "application/json", "User-Agent": "FSCinema-info-beamer/1.0"}
     token = str(config.get("token", "")).strip()
@@ -244,7 +251,7 @@ def main():
     last_config_fingerprint = None
     while True:
         config = read_json(CONFIG, {}) or {}
-        stable_config = {k: config.get(k) for k in ("endpoint", "location_id", "screen_id", "token", "show_ads")}
+        stable_config = {k: config.get(k) for k in ("endpoint", "location", "location_id", "screen_id", "token", "show_ads")}
         fingerprint = hashlib.sha256(json.dumps(stable_config, sort_keys=True).encode("utf-8")).hexdigest()
         if fingerprint != last_config_fingerprint:
             etag = None

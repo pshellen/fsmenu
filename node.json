@@ -11,7 +11,36 @@
       "default": "https://emcxmnrhplzlbsowxeuk.supabase.co/functions/v1/menu-board-manifest"
     },
     {
-      "title": "Location ID",
+      "title": "Location",
+      "name": "location",
+      "type": "select",
+      "options": [
+        ["2dc32f05-a243-4679-b933-be77c8a6f7c8", "Auburn"],
+        ["bdb4f395-6ba8-40f1-b301-f25abb6325c2", "Cambridge"],
+        ["4483f559-c3a5-482b-9149-c4320cf26066", "Chester NY"],
+        ["adf66236-7cad-42ef-b746-da8c391bb45b", "Chestertown"],
+        ["eab33d80-ebe9-4763-b816-fec3101efd6b", "Churchville"],
+        ["36fddc53-a707-4b6f-aaf6-7bbbf8a61d05", "Easton"],
+        ["b2b3667d-8e0f-46c2-9b1c-b21af27c6f72", "Eastpoint"],
+        ["0e68b275-f913-418b-9524-b89c6868783d", "Falmouth"],
+        ["7476d133-65a5-4ff5-8702-12566886a2a0", "Harbor East"],
+        ["474bab52-9d2c-442f-b824-7ee359335933", "Matamoras"],
+        ["a6546940-22b6-4eaf-9d48-5460b270f56a", "Monroe"],
+        ["c3ee6946-3baf-4e29-81db-52b8b22814d1", "Ocean City"],
+        ["46bf6fef-754e-4365-a4ef-b9d7efe5e756", "Palmyra"],
+        ["15bc0b84-0766-4537-8936-6a5a1f1345c5", "Pottstown"],
+        ["f1dc88b0-c354-4407-ba84-391b28690437", "Prince Frederick"],
+        ["4a9c5c94-b5d7-41e9-916e-750f34029c4c", "Thomaston"],
+        ["d48e155f-a676-47fc-989b-f35675c4361e", "Watertower"],
+        ["83520416-3277-45a1-8cb9-149f87b48504", "Waterville"],
+        ["2dca9baf-cdab-4406-9947-053d20744971", "Wellington"],
+        ["c61a99d7-9359-481f-8188-49f2c56a98a5", "Wells"],
+        ["custom", "Custom location ID"]
+      ],
+      "default": "2dca9baf-cdab-4406-9947-053d20744971"
+    },
+    {
+      "title": "Custom location ID",
       "name": "location_id",
       "type": "string",
       "default": "2dca9baf-cdab-4406-9947-053d20744971"

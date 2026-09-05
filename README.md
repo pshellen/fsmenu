@@ -25,6 +25,7 @@ The token field is visually masked in Hosted but is ultimately delivered to the 
 ## Configuration
 
 - **Screen:** Use `combo`, `alacarte`, or `full`; this becomes the endpoint's `screen_id` query value.
+- **Location:** Select one of the 20 configured FSCinema locations from the dropdown, or choose Custom location ID and enter another location UUID. Existing setups using only the location ID field remain compatible.
 - **Display profile:** Must match the intended canvas. The player letterboxes safely if the physical output differs.
 - **Playback mode:** `Configured screen` renders the selected manifest normally. `Alternate combo / a la carte` uses a `full` manifest and switches between full-screen combo and à-la-carte pages; configure `screen_id=full` and typically use 1920×1080.
 - **Page duration:** Number of seconds each page remains visible in alternating mode; defaults to 25 seconds.
@@ -65,6 +66,6 @@ Run `python3 -m unittest discover -s tests -v`. For visual testing, run `python3
 
 The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`.
 
-## Version 1.1.3
+## Version 1.1.6
 
 Python 2.7 service compatibility fix, plus schema validation, ETag revalidation, offline retention, responsive layout profiles, advertisement rotation, and combo image slots.

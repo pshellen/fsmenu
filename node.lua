@@ -7,9 +7,16 @@ local offline_logo = resource.load_image("offline-logo.png")
 local white = resource.create_colored_texture(1, 1, 1, 1)
 local surface = resource.create_colored_texture(1, 1, 1, 1)
 local placeholder = resource.create_colored_texture(1, 1, 1, 1)
-local saber_glow_wide = resource.create_colored_texture(0.03, 0.49, 0.82, 0.16)
-local saber_glow = resource.create_colored_texture(0.12, 0.78, 1, 0.34)
-local saber_core = resource.create_colored_texture(0.82, 0.97, 1, 0.92)
+local saber_bands = {}
+for index = 1, 12 do
+    local width = 46 - (index - 1) * 3.5
+    local alpha = 0.014 + index * 0.006
+    saber_bands[#saber_bands + 1] = {
+        width = width,
+        texture = resource.create_colored_texture(0.05, 0.64, 0.94, alpha),
+    }
+end
+local saber_core = resource.create_colored_texture(0.78, 0.96, 1, 0.72)
 local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, debug = false }
 local state = nil
 local font_region = nil
@@ -288,9 +295,10 @@ local function render_saber_edges(w, h, center, y1)
     local points = {0, w}
     if center then points[#points + 1] = w * 0.5 end
     for _, x in ipairs(points) do
-        saber_glow_wide:draw(math.max(0, x-28), y1, math.min(w, x+28), h)
-        saber_glow:draw(math.max(0, x-12), y1, math.min(w, x+12), h)
-        saber_core:draw(math.max(0, x-2), y1, math.min(w, x+2), h)
+        for _, band in ipairs(saber_bands) do
+            band.texture:draw(math.max(0, x-band.width), y1, math.min(w, x+band.width), h)
+        end
+        saber_core:draw(math.max(0, x-1), y1, math.min(w, x+1), h)
     end
 end
 
