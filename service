@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import errno
+import shutil
 import sys
 import time
 try:
@@ -18,6 +19,9 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 CACHE = ROOT
 STATE = os.path.join(ROOT, "state.json")
 CONFIG = os.path.join(ROOT, "config.json")
+SCRATCH_ROOT = os.environ.get("SCRATCH")
+PERSIST = os.path.join(SCRATCH_ROOT, "fscinema-menu-board") if SCRATCH_ROOT else None
+PERSIST_STATE = os.path.join(PERSIST, "last-good-state.json") if PERSIST else None
 ALLOWED_MEDIA = {"image", "video"}
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv"}
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
@@ -47,6 +51,66 @@ def atomic_json(path, value):
         handle.flush()
         os.fsync(handle.fileno())
     os.rename(tmp, path)
+
+
+def atomic_copy(source, destination):
+    temp = destination + ".part"
+    with open(source, "rb") as src, open(temp, "wb") as out:
+        shutil.copyfileobj(src, out, 1024 * 256)
+        out.flush()
+        os.fsync(out.fileno())
+    os.rename(temp, destination)
+
+
+def ensure_dir(path):
+    if not path:
+        return
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST:
+            raise
+
+
+def referenced_media(manifest):
+    for combo in manifest.get("combos", []):
+        if combo.get("local_image"):
+            yield combo["local_image"]
+    for category in manifest.get("categories", []):
+        if category.get("local_image"):
+            yield category["local_image"]
+        for item in category.get("items", []):
+            if item.get("local_image"):
+                yield item["local_image"]
+    for ad in manifest.get("advertisements", []):
+        if ad.get("local_media"):
+            yield ad["local_media"]
+
+
+def restore_persistent_state():
+    if not PERSIST_STATE or os.path.exists(STATE):
+        return False
+    cached = read_json(PERSIST_STATE, {}) or {}
+    if not cached.get("manifest"):
+        return False
+    for name in set(referenced_media(cached["manifest"])):
+        source = os.path.join(PERSIST, name)
+        destination = os.path.join(CACHE, name)
+        if os.path.isfile(source) and os.path.getsize(source) > 0 and not os.path.exists(destination):
+            atomic_copy(source, destination)
+    cached.update({"ok": False, "checked_at": int(time.time()), "error": "Offline: showing last saved menu"})
+    atomic_json(STATE, cached)
+    log("restored last saved menu", cached["manifest"].get("manifest_version"))
+    return True
+
+
+def persist_good_state(value):
+    if not PERSIST_STATE:
+        return
+    try:
+        atomic_json(PERSIST_STATE, value)
+    except Exception as exc:
+        log("persistent state save failed:", exc)
 
 
 def validate_manifest(value, expected_screen):
@@ -96,8 +160,20 @@ def cache_media(url, version):
         return None
     name = media_filename(url, version)
     final = os.path.join(CACHE, name)
+    persistent = os.path.join(PERSIST, name) if PERSIST else None
     if os.path.isfile(final) and os.path.getsize(final) > 0:
+        if persistent and not os.path.exists(persistent):
+            try:
+                atomic_copy(final, persistent)
+            except Exception as exc:
+                log("persistent media save failed:", name, exc)
         return name
+    if persistent and os.path.isfile(persistent) and os.path.getsize(persistent) > 0:
+        try:
+            atomic_copy(persistent, final)
+            return name
+        except Exception as exc:
+            log("persistent media restore failed:", name, exc)
     temp = final + ".part"
     try:
         response = requests.get(url, headers={"User-Agent": "FSCinema-info-beamer/1.0"}, timeout=45, stream=True)
@@ -107,9 +183,13 @@ def cache_media(url, version):
                 if chunk:
                     out.write(chunk)
         os.rename(temp, final)
+        if persistent:
+            try:
+                atomic_copy(final, persistent)
+            except Exception as exc:
+                log("persistent media save failed:", name, exc)
         return name
     except Exception as exc:
-        failed = False
         try:
             os.unlink(temp)
         except OSError:
@@ -157,11 +237,9 @@ def fetch(config, etag):
 
 
 def main():
-    try:
-        os.makedirs(CACHE)
-    except OSError as exc:
-        if exc.errno != errno.EEXIST:
-            raise
+    ensure_dir(CACHE)
+    ensure_dir(PERSIST)
+    restore_persistent_state()
     etag = None
     last_config_fingerprint = None
     while True:
@@ -179,7 +257,9 @@ def main():
                 atomic_json(STATE, old_state)
             else:
                 manifest = enrich_media(validate_manifest(manifest, config.get("screen_id", "combo")), config.get("show_ads", True))
-                atomic_json(STATE, {"ok": True, "checked_at": int(time.time()), "etag": etag, "error": None, "manifest": manifest})
+                new_state = {"ok": True, "checked_at": int(time.time()), "etag": etag, "error": None, "manifest": manifest}
+                atomic_json(STATE, new_state)
+                persist_good_state(new_state)
                 log("published manifest", manifest.get("manifest_version"))
         except Exception as exc:
             failed = True

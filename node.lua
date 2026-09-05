@@ -3,6 +3,7 @@ local json = require "json"
 gl.setup(NATIVE_WIDTH, NATIVE_HEIGHT)
 
 local font = resource.load_font("font.ttf")
+local offline_logo = resource.load_image("offline-logo.png")
 local white = resource.create_colored_texture(1, 1, 1, 1)
 local surface = resource.create_colored_texture(1, 1, 1, 1)
 local placeholder = resource.create_colored_texture(1, 1, 1, 1)
@@ -135,6 +136,15 @@ local function fit_image(path, x1, y1, x2, y2)
     local scale = math.min((x2-x1)/iw, (y2-y1)/ih)
     local w, h = iw*scale, ih*scale
     image:draw(x1+(x2-x1-w)/2, y1+(y2-y1-h)/2, x1+(x2-x1+w)/2, y1+(y2-y1+h)/2)
+end
+
+local function render_offline_indicator(w, h)
+    local status, iw, ih = offline_logo:state()
+    if status ~= "loaded" or not iw or not ih or iw == 0 or ih == 0 then return end
+    local indicator_h = math.min(w, h) * .055
+    local indicator_w = indicator_h * iw / ih
+    local margin = math.min(w, h) * .012
+    offline_logo:draw(w-margin-indicator_w, h-margin-indicator_h, w-margin, h-margin, .88)
 end
 
 local function render_advertisement(manifest, w, h)
@@ -319,6 +329,7 @@ function node.render()
                 text(w*.01,h*.035,"AD VIDEO: "..last_ad_error,math.min(w,h)*.010,0.75,0.08,0.08,1)
             end
         end
+        if state.ok == false then render_offline_indicator(w, h) end
     end
     gl.popMatrix()
 end

@@ -2,7 +2,7 @@
 
 Live, resilient menu-board package for the schema-version-1 FSCinema manifest. It supports `combo`, `alacarte`, and `full` screens at 3840×1080 dual-HD horizontal, 2160×3840 4K vertical, 1920×1080 HD horizontal, and 3840×2160 4K horizontal.
 
-The service sends `If-None-Match`, accepts empty 304 responses, validates new JSON before publishing it, atomically updates player state, caches media by URL plus content version, and retains the last valid manifest when a refresh fails. Combo images use each combo's `image_url` and appear in the image area above the name, description, and price. A neutral placeholder is used when `image_url` is null or empty.
+The service sends `If-None-Match`, accepts empty 304 responses, validates new JSON before publishing it, atomically updates player state, caches media by URL plus content version, and retains the last valid manifest when a refresh fails. The last-known-good manifest and its media are also copied to info-beamer's persistent `SCRATCH` storage and restored before the first network request after a restart. Combo images use each combo's `image_url` and appear in the image area above the name, description, and price. A neutral placeholder is used when `image_url` is null or empty.
 
 ## Hosted import
 
@@ -23,6 +23,8 @@ The token field is visually masked in Hosted but is ultimately delivered to the 
 - **Font size:** Scales menu typography from 75% to 125%; defaults to 100%. Increase gradually and verify long combo descriptions and dense category cards on the physical display.
 - **Show advertisements:** Downloads and rotates active, in-date advertising media in the advertisement region. If no valid advertisement is available, the region collapses and the menu uses the available space.
 - **Debug status:** Shows LIVE/STALE and the current manifest version in the upper-left corner.
+
+When a refresh fails after at least one successful sync, the last saved menu remains on screen and a small Flagship Cinemas Premium Support logo appears in the lower-right corner. The indicator disappears automatically after connectivity recovers.
 
 The endpoint's `screen.orientation` and source dimensions are retained as data, while the explicit Hosted display profile controls the physical composition. Configure the device/TV rotation separately for portrait installations.
 
@@ -52,6 +54,6 @@ Run `python3 -m unittest discover -s tests -v`. For visual testing, run `python3
 
 The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`.
 
-## Version 1.0.9
+## Version 1.1.0
 
 Python 2.7 service compatibility fix, plus schema validation, ETag revalidation, offline retention, responsive layout profiles, advertisement rotation, and combo image slots.
