@@ -20,6 +20,7 @@ The token field is visually masked in Hosted but is ultimately delivered to the 
 - **Display profile:** Must match the intended canvas. The player letterboxes safely if the physical output differs.
 - **Playback mode:** `Configured screen` renders the selected manifest normally. `Alternate combo / a la carte` uses a `full` manifest and switches between full-screen combo and à-la-carte pages; configure `screen_id=full` and typically use 1920×1080.
 - **Page duration:** Number of seconds each page remains visible in alternating mode; defaults to 25 seconds.
+- **Font size:** Scales menu typography from 75% to 125%; defaults to 100%. Increase gradually and verify long combo descriptions and dense category cards on the physical display.
 - **Show advertisements:** Downloads and rotates active, in-date advertising media in the advertisement region. If no valid advertisement is available, the region collapses and the menu uses the available space.
 - **Debug status:** Shows LIVE/STALE and the current manifest version in the upper-left corner.
 
@@ -51,6 +52,6 @@ Run `python3 -m unittest discover -s tests -v`. For visual testing, run `python3
 
 The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`.
 
-## Version 1.0.4
+## Version 1.0.6
 
 Python 2.7 service compatibility fix, plus schema validation, ETag revalidation, offline retention, responsive layout profiles, advertisement rotation, and combo image slots.

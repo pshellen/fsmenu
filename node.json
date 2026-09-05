@@ -54,6 +54,14 @@
       "max": 300
     },
     {
+      "title": "Font size (%)",
+      "name": "font_scale_percent",
+      "type": "integer",
+      "default": 100,
+      "min": 75,
+      "max": 125
+    },
+    {
       "title": "Refresh interval",
       "name": "refresh_seconds",
       "type": "integer",

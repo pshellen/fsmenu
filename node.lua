@@ -9,7 +9,7 @@ local placeholder = resource.create_colored_texture(1, 1, 1, 1)
 local saber_glow_wide = resource.create_colored_texture(0.03, 0.49, 0.82, 0.16)
 local saber_glow = resource.create_colored_texture(0.12, 0.78, 1, 0.34)
 local saber_core = resource.create_colored_texture(0.82, 0.97, 1, 0.92)
-local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, debug = false }
+local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, font_scale_percent = 100, debug = false }
 local state = nil
 local images = {}
 local ad_media = {}
@@ -79,12 +79,17 @@ util.json_watch("state.json", function(value)
     end
 end)
 
+local function scaled_font_size(size)
+    local percent = math.max(75, math.min(125, tonumber(config.font_scale_percent) or 100))
+    return size * percent / 100
+end
+
 local function text(x, y, value, size, r, g, b, a)
-    font:write(x, y, tostring(value or ""), size, r or 0.05, g or 0.08, b or 0.13, a or 1)
+    font:write(x, y, tostring(value or ""), scaled_font_size(size), r or 0.05, g or 0.08, b or 0.13, a or 1)
 end
 
 local function centered(x1, x2, y, value, size, color)
-    local width = font:width(tostring(value or ""), size)
+    local width = font:width(tostring(value or ""), scaled_font_size(size))
     text(x1 + math.max(0, (x2 - x1 - width) / 2), y, value, size, unpack(color or {0.05, 0.08, 0.13, 1}))
 end
 
@@ -128,7 +133,8 @@ local function render_combo(manifest, w, h, with_ads)
     local combos = sorted_available(manifest.combos)
     local margin, gap = w * 0.018, w * 0.008
     local grid_top
-    if with_ads and render_advertisement(manifest, w, h * 0.5) then
+    local has_ad = with_ads and render_advertisement(manifest, w, h * 0.5)
+    if has_ad then
         grid_top = h * 0.5 + margin
     else
         local top = h * 0.035
@@ -154,6 +160,7 @@ local function render_combo(manifest, w, h, with_ads)
         centered(x1, x2, y2-info_h+info_h*.70, money(combo), title_size*.92, {0.03, 0.22, 0.52, 1})
     end
     centered(0, w, h-footer*.85, manifest.screen.tax_disclaimer or "", math.min(w,h)*.014, {0.2,0.25,0.3,1})
+    return has_ad
 end
 
 local function render_categories(manifest, w, h)
@@ -205,23 +212,25 @@ local function render_categories(manifest, w, h)
                 local iy = y+(has_hero and ch*.53 or ch*.20)+cursor*line
                 local price = money(item)
                 local item_size = line*.43
-                local total_width = font:width(item.name or "", item_size) + font:width(price, item_size) + cw*.06
+                local measured_size = scaled_font_size(item_size)
+                local total_width = font:width(item.name or "", measured_size) + font:width(price, measured_size) + cw*.06
                 if total_width > cw*.88 then item_size = item_size * (cw*.88/total_width) end
                 text(x+cw*.06, iy, item.name, item_size)
-                text(x+cw*.94-font:width(price,item_size), iy, price, item_size)
+                text(x+cw*.94-font:width(price,scaled_font_size(item_size)), iy, price, item_size)
                 cursor = cursor + 1
             end
         end
     end
 end
 
-local function render_saber_edges(w, h, center)
+local function render_saber_edges(w, h, center, y1)
+    y1 = y1 or 0
     local points = {0, w}
     if center then points[#points + 1] = w * 0.5 end
     for _, x in ipairs(points) do
-        saber_glow_wide:draw(math.max(0, x-28), 0, math.min(w, x+28), h)
-        saber_glow:draw(math.max(0, x-12), 0, math.min(w, x+12), h)
-        saber_core:draw(math.max(0, x-2), 0, math.min(w, x+2), h)
+        saber_glow_wide:draw(math.max(0, x-28), y1, math.min(w, x+28), h)
+        saber_glow:draw(math.max(0, x-12), y1, math.min(w, x+12), h)
+        saber_core:draw(math.max(0, x-2), y1, math.min(w, x+2), h)
     end
 end
 
@@ -259,7 +268,9 @@ function node.render()
             local duration = math.max(5, tonumber(config.page_duration_seconds) or 25)
             layout = math.floor(sys.now()/duration)%2 == 0 and "combo" or "alacarte"
         end
-        if layout == "combo" then render_combo(manifest,w,h,true); render_saber_edges(w,h,false)
+        if layout == "combo" then
+            local has_ad = render_combo(manifest,w,h,true)
+            render_saber_edges(w,h,false,has_ad and h*.5 or 0)
         elseif layout == "alacarte" then render_categories(manifest,w,h); render_saber_edges(w,h,false)
         else render_full(manifest,w,h) end
         if config.debug then
