@@ -237,15 +237,34 @@ end
 local function render_categories(manifest, w, h)
     font_region = "alacarte"
     local source = sorted_available(manifest.categories)
-    local categories, drinks = {}, {}
+    local categories, drinks, upgrades = {}, {}, {}
     for _, category in ipairs(source) do
         local name = string.lower(category.name or "")
         if name == "bottled water" or name == "fountain drinks" or name == "icee" or
            name == "drinks" or name == "other drinks" or name == "beverages" or
            name == "refreshing drinks" then
             drinks[#drinks + 1] = category
+        elseif name == "combo upgrades" or name == "combo upgrade" then
+            upgrades[#upgrades + 1] = category
         else
             categories[#categories + 1] = category
+        end
+    end
+    if #upgrades > 0 then
+        local attached = false
+        for index, category in ipairs(categories) do
+            if string.lower(category.name or "") == "popcorn" then
+                local combined = {}
+                for key, value in pairs(category) do combined[key] = value end
+                combined.groups = {category}
+                for _, upgrade in ipairs(upgrades) do combined.groups[#combined.groups + 1] = upgrade end
+                categories[index] = combined
+                attached = true
+                break
+            end
+        end
+        if not attached then
+            for _, upgrade in ipairs(upgrades) do categories[#categories + 1] = upgrade end
         end
     end
     if #drinks > 0 then categories[#categories + 1] = {name="Refreshing Drinks", groups=drinks} end
@@ -272,12 +291,16 @@ local function render_categories(manifest, w, h)
         if has_hero then fit_image(hero_path, x+cw*.06, y+ch*.14, x+cw*.94, y+ch*.50) end
         local groups = category.groups or {category}
         local entries = 0
-        for _, group in ipairs(groups) do entries = entries + #(sorted_available(group.items)) + (category.groups and 1 or 0) end
+        for group_index, group in ipairs(groups) do
+            local same_as_card = group_index == 1 and string.lower(group.name or "") == string.lower(category.name or "")
+            entries = entries + #(sorted_available(group.items)) + (category.groups and not same_as_card and 1 or 0)
+        end
         local available_fraction = has_hero and .40 or .76
         local line = math.min(ch*.095, (ch*available_fraction)/math.max(1,entries))
         local cursor = 0
-        for _, group in ipairs(groups) do
-            if category.groups then
+        for group_index, group in ipairs(groups) do
+            local same_as_card = group_index == 1 and string.lower(group.name or "") == string.lower(category.name or "")
+            if category.groups and not same_as_card then
                 local gy = y+(has_hero and ch*.53 or ch*.20)+cursor*line
                 text(x+cw*.06, gy, string.upper(group.name or ""), line*.40, 0.07, 0.39, 0.54, 1)
                 cursor = cursor + 1
