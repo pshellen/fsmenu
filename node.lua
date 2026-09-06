@@ -235,7 +235,9 @@ local function render_categories(manifest, w, h)
     local categories, drinks = {}, {}
     for _, category in ipairs(source) do
         local name = string.lower(category.name or "")
-        if name == "bottled water" or name == "fountain drinks" or name == "icee" then
+        if name == "bottled water" or name == "fountain drinks" or name == "icee" or
+           name == "drinks" or name == "other drinks" or name == "beverages" or
+           name == "refreshing drinks" then
             drinks[#drinks + 1] = category
         else
             categories[#categories + 1] = category
