@@ -362,6 +362,8 @@ end
 
 local function render_full(manifest, w, h)
     local left = w*.50
+    -- Paint the saber first so advertisements and menu cards always cover it.
+    render_saber_edges(w, h, true)
     gl.pushMatrix()
     gl.translate(0, 0)
     render_combo(manifest, left, h, true)
@@ -370,7 +372,6 @@ local function render_full(manifest, w, h)
     gl.translate(left, 0)
     render_categories(manifest, w-left, h)
     gl.popMatrix()
-    render_saber_edges(w, h, true)
 end
 
 function node.render()
@@ -395,9 +396,9 @@ function node.render()
             layout = math.floor(sys.now()/duration)%2 == 0 and "combo" or "alacarte"
         end
         if layout == "combo" then
-            local has_ad = render_combo(manifest,w,h,true)
-            render_saber_edges(w,h,false,has_ad and h*.5 or 0)
-        elseif layout == "alacarte" then render_categories(manifest,w,h); render_saber_edges(w,h,false)
+            render_saber_edges(w,h,false)
+            render_combo(manifest,w,h,true)
+        elseif layout == "alacarte" then render_saber_edges(w,h,false); render_categories(manifest,w,h)
         else render_full(manifest,w,h) end
         font_region = nil
         if config.debug then
