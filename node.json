@@ -99,6 +99,14 @@
       "max": 250
     },
     {
+      "title": "Sales tax font size (%)",
+      "name": "tax_font_scale_percent",
+      "type": "integer",
+      "default": 100,
+      "min": 50,
+      "max": 250
+    },
+    {
       "title": "Refresh interval",
       "name": "refresh_seconds",
       "type": "integer",

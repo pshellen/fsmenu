@@ -17,7 +17,7 @@ for index = 1, 12 do
     }
 end
 local saber_core = resource.create_colored_texture(0.78, 0.96, 1, 0.72)
-local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, debug = false }
+local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, tax_font_scale_percent = 100, debug = false }
 local state = nil
 local font_region = nil
 local images = {}
@@ -99,8 +99,11 @@ local function scaled_font_size(size)
         configured = tonumber(config.combo_font_scale_percent) or legacy
     elseif font_region == "alacarte" then
         configured = tonumber(config.alacarte_font_scale_percent) or legacy
+    elseif font_region == "tax" then
+        configured = tonumber(config.tax_font_scale_percent) or legacy
     end
-    local percent = math.max(75, math.min(250, configured))
+    local minimum = font_region == "tax" and 50 or 75
+    local percent = math.max(minimum, math.min(250, configured))
     return size * percent / 100
 end
 
@@ -225,7 +228,9 @@ local function render_combo(manifest, w, h, with_ads)
         wrapped_centered(x1+card_w*.04, x2-card_w*.04, y2-info_h+info_h*.34, combo.description or "", title_size*.55, title_size*.72, 2)
         centered(x1, x2, y2-info_h+info_h*.70, money(combo), title_size*.92, {0.03, 0.22, 0.52, 1})
     end
+    font_region = "tax"
     centered(0, w, h-footer*.85, manifest.screen.tax_disclaimer or "", math.min(w,h)*.014, {0.2,0.25,0.3,1})
+    font_region = "combo"
     return has_ad
 end
 

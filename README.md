@@ -31,6 +31,7 @@ The token field is visually masked in Hosted but is ultimately delivered to the 
 - **Page duration:** Number of seconds each page remains visible in alternating mode; defaults to 25 seconds.
 - **Combo font size:** Independently scales combo names, descriptions, and prices from 75% to 250%; defaults to 100%.
 - **A la carte font size:** Independently scales category headings, item names, and prices from 75% to 250%; defaults to 100%.
+- **Sales tax font size:** Independently scales the tax disclaimer from 50% to 250%; defaults to 100%.
 
 Values above 125% are provided for on-device assessment and may cause clipping or vertical overlap on dense menus. Increase each screen type gradually and verify the complete rotation before rollout.
 - **Show advertisements:** Downloads and rotates active, in-date advertising media in the advertisement region. If no valid advertisement is available, the region collapses and the menu uses the available space.
@@ -66,6 +67,6 @@ Run `python3 -m unittest discover -s tests -v`. For visual testing, run `python3
 
 The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`.
 
-## Version 1.1.7
+## Version 1.1.8
 
 Python 2.7 service compatibility fix, plus schema validation, ETag revalidation, offline retention, responsive layout profiles, advertisement rotation, and combo image slots.
