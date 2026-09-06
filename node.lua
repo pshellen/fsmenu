@@ -140,6 +140,24 @@ local function wrapped_centered(x1, x2, y, value, size, line_height, max_lines, 
     end
 end
 
+local function split_two_lines(value, size, max_width)
+    local text_value = tostring(value or "")
+    if font:width(text_value, scaled_font_size(size)) <= max_width then return {text_value} end
+    local words = {}
+    for word in text_value:gmatch("%S+") do words[#words + 1] = word end
+    if #words < 2 then return {text_value} end
+    local best, best_width = nil, nil
+    for split = 1, #words - 1 do
+        local first, second = {}, {}
+        for index = 1, split do first[#first + 1] = words[index] end
+        for index = split + 1, #words do second[#second + 1] = words[index] end
+        local lines = {table.concat(first, " "), table.concat(second, " ")}
+        local widest = math.max(font:width(lines[1], scaled_font_size(size)), font:width(lines[2], scaled_font_size(size)))
+        if not best_width or widest < best_width then best, best_width = lines, widest end
+    end
+    return best or {text_value}
+end
+
 local function fit_image(path, x1, y1, x2, y2)
     local image = images[path]
     if not image then
@@ -293,13 +311,16 @@ local function render_categories(manifest, w, h)
         local entries = 0
         for group_index, group in ipairs(groups) do
             local same_as_card = group_index == 1 and string.lower(group.name or "") == string.lower(category.name or "")
-            entries = entries + #(sorted_available(group.items)) + (category.groups and not same_as_card and 1 or 0)
+            local is_upgrade = string.lower(group.name or "") == "combo upgrades" or string.lower(group.name or "") == "combo upgrade"
+            local item_rows = #(sorted_available(group.items)) * (is_upgrade and 2 or 1)
+            entries = entries + item_rows + (category.groups and not same_as_card and 1 or 0)
         end
         local available_fraction = has_hero and .40 or .76
         local line = math.min(ch*.095, (ch*available_fraction)/math.max(1,entries))
         local cursor = 0
         for group_index, group in ipairs(groups) do
             local same_as_card = group_index == 1 and string.lower(group.name or "") == string.lower(category.name or "")
+            local is_upgrade = string.lower(group.name or "") == "combo upgrades" or string.lower(group.name or "") == "combo upgrade"
             if category.groups and not same_as_card then
                 local gy = y+(has_hero and ch*.53 or ch*.20)+cursor*line
                 text(x+cw*.06, gy, string.upper(group.name or ""), line*.40, 0.07, 0.39, 0.54, 1)
@@ -310,11 +331,18 @@ local function render_categories(manifest, w, h)
                 local price = money(item)
                 local item_size = line*.43
                 local measured_size = scaled_font_size(item_size)
-                local total_width = font:width(item.name or "", measured_size) + font:width(price, measured_size) + cw*.06
-                if total_width > cw*.88 then item_size = item_size * (cw*.88/total_width) end
-                text(x+cw*.06, iy, item.name, item_size)
-                text(x+cw*.94-font:width(price,scaled_font_size(item_size)), iy, price, item_size)
-                cursor = cursor + 1
+                local price_width = font:width(price, measured_size)
+                local name_width = cw*.82-price_width
+                local item_lines = is_upgrade and split_two_lines(item.name, item_size, name_width) or {item.name or ""}
+                local widest = 0
+                for _, item_line in ipairs(item_lines) do widest = math.max(widest, font:width(item_line, measured_size)) end
+                if widest > name_width then item_size = item_size * (name_width/widest) end
+                for line_index, item_line in ipairs(item_lines) do
+                    text(x+cw*.06, iy+(line_index-1)*line, item_line, item_size)
+                end
+                local price_y = iy + (#item_lines-1)*line*.5
+                text(x+cw*.94-font:width(price,scaled_font_size(item_size)), price_y, price, item_size)
+                cursor = cursor + (is_upgrade and 2 or 1)
             end
         end
     end
