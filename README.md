@@ -1,6 +1,6 @@
 # FSCinema Menu Boards for info-beamer Hosted
 
-Live, resilient menu-board package for the schema-version-1 FSCinema manifest. It supports `combo`, `alacarte`, and `full` screens at 3840×1080 dual-HD horizontal, 2160×3840 4K vertical, 1920×1080 HD horizontal, and 3840×2160 4K horizontal.
+Live, resilient menu-board package for the schema-version-1 FSCinema manifest. It supports `combo`, `alacarte`, `full`, and `hotfoods` screens at 3840×1080 dual-HD horizontal, 2160×3840 4K vertical, 1920×1080 HD horizontal, and 3840×2160 4K horizontal.
 
 ## Raspberry Pi compatibility
 
@@ -26,7 +26,7 @@ The token field is visually masked in Hosted but is ultimately delivered to the 
 
 ## Configuration
 
-- **Screen:** Use `combo`, `alacarte`, or `full`; this becomes the endpoint's `screen_id` query value.
+- **Screen:** Use `combo`, `alacarte`, `full`, or `hotfoods`; this becomes the endpoint's `screen_id` query value. Only locations with a Hot Foods screen configured by the web app will return `hotfoods` data.
 - **Location:** Select one of the 20 configured FSCinema locations from the dropdown, or choose Custom location ID and enter another location UUID. Existing setups using only the location ID field remain compatible.
 - **Display profile:** Must match the intended canvas. The player letterboxes safely if the physical output differs.
 - **Playback mode:** `Configured screen` renders the selected manifest normally. `Alternate combo / a la carte` uses a `full` manifest and switches between full-screen combo and à-la-carte pages; configure `screen_id=full` and typically use 1920×1080.
@@ -34,15 +34,25 @@ The token field is visually masked in Hosted but is ultimately delivered to the 
 - **Combo upgrades placement:** When a Combo Upgrade category is present, place it at the bottom of Popcorn, Snacks, Refreshing Drinks, or on a separate card. Defaults to Popcorn; a missing target falls back to a separate card.
 - **Combo font size:** Independently scales combo names, descriptions, and prices from 75% to 250%; defaults to 100%.
 - **A la carte font size:** Independently scales category headings, item names, and prices from 75% to 250%; defaults to 100%.
+- **Hot Foods font size:** Independently scales the dedicated Hot Foods heading, item names, and prices from 75% to 250%; defaults to 100%.
 - **Sales tax font size:** Independently scales the tax disclaimer from 50% to 250%; defaults to 100%.
 
 Values above 125% are provided for on-device assessment and may cause clipping or vertical overlap on dense menus. Increase each screen type gradually and verify the complete rotation before rollout.
 - **Show advertisements:** Downloads and rotates active, in-date advertising media in the advertisement region. If no valid advertisement is available, the region collapses and the menu uses the available space.
+- **Theme / takeover overlay:** Select an uploaded transparent PNG to draw above the entire composed screen. Use it for holiday borders, branded corner art, rating callouts, or full movie takeovers. The included transparent default keeps existing setups unchanged.
+- **Overlay fit:** `Stretch` maps the PNG exactly to the configured display profile and is recommended for canvas-matched artwork. `Contain` preserves the whole image and may leave uncovered edges. `Cover / crop` fills the canvas while preserving aspect ratio.
+- **Overlay opacity:** Controls the overlay from fully hidden (0%) to its original PNG alpha (100%). Transparent pixels in the source remain transparent.
 - **Debug status:** Shows LIVE/STALE and the current manifest version in the upper-left corner.
 
 When a refresh fails after at least one successful sync, the last saved menu remains on screen and a small Flagship Cinemas Premium Support logo appears in the lower-right corner. The indicator disappears automatically after connectivity recovers.
 
 The endpoint's `screen.orientation` and source dimensions are retained as data, while the explicit Hosted display profile controls the physical composition. Configure the device/TV rotation separately for portrait installations.
+
+## Hot Foods screen
+
+Select **Hot Foods** with the 1920×1080 display profile for the dedicated split layout. The left half shows the available Hot Food items and tax disclaimer; the right half rotates the manifest's active advertisement images and H.264 videos from the local device cache. If no playable media exists, the right half remains black with a small “No media available” message.
+
+The service honors the web app's `schedule` records using each location's timezone. `hide_start_time` and `hide_end_time` can cross midnight (for example, Pottstown hides Hot Food from 10:05 PM until 10:30 AM). Schedule state is recalculated locally at least once per minute without redownloading the manifest or media. Outside the display window, prices and items are replaced by “Currently unavailable.”
 
 ## Rollout
 
@@ -70,6 +80,14 @@ Run `python3 -m unittest discover -s tests -v`. For visual testing, run `python3
 
 The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`.
 
-## Version 1.1.14
+## Overlay artwork
 
-Adds location-timezone special-day pricing and configurable Combo Upgrade placement, along with Python 2.7 service compatibility, schema validation, ETag revalidation, offline retention, responsive layouts, advertisement rotation, and combo image slots.
+Create the PNG at the same pixel dimensions and orientation as the selected display profile whenever possible. Keep menu-readable areas transparent and place decorative or takeover artwork only where intended. Because the overlay is the final rendering layer, it also appears above advertisements, debug status, and the offline indicator. Swap or remove the selected asset in Hosted without rebuilding the package.
+
+## Version 1.3.0
+
+Adds an optional 4K-capable transparent PNG overlay with configurable stretch, contain, or cover placement and opacity for holiday themes and movie takeovers.
+
+## Version 1.2.0
+
+Adds the scheduled Hot Foods split screen with cached image/video playback, location-timezone special-day pricing, and configurable Combo Upgrade placement, along with Python 2.7 service compatibility, schema validation, ETag revalidation, offline retention, responsive layouts, advertisement rotation, and combo image slots.

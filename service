@@ -63,29 +63,34 @@ def atomic_copy(source, destination):
     os.rename(temp, destination)
 
 
-def location_day_of_week(manifest, timestamp=None):
-    """Return Sunday=0 through Saturday=6 in the manifest location timezone."""
+def location_localtime(manifest, timestamp=None):
+    """Return local time for the manifest location without changing process timezone."""
     if timestamp is None:
         timestamp = time.time()
     timezone_name = str((manifest.get("location") or {}).get("timezone") or "").strip()
     if not timezone_name or not hasattr(time, "tzset"):
-        return (time.localtime(timestamp).tm_wday + 1) % 7
+        return time.localtime(timestamp)
     zone_root = os.path.realpath(ZONEINFO_ROOT)
     zone_path = os.path.realpath(os.path.join(zone_root, timezone_name))
     if not zone_path.startswith(zone_root + os.sep) or not os.path.isfile(zone_path):
-        return (time.localtime(timestamp).tm_wday + 1) % 7
+        return time.localtime(timestamp)
     had_timezone = "TZ" in os.environ
     previous_timezone = os.environ.get("TZ")
     try:
         os.environ["TZ"] = timezone_name
         time.tzset()
-        return (time.localtime(timestamp).tm_wday + 1) % 7
+        return time.localtime(timestamp)
     finally:
         if had_timezone:
             os.environ["TZ"] = previous_timezone
         else:
             del os.environ["TZ"]
         time.tzset()
+
+
+def location_day_of_week(manifest, timestamp=None):
+    """Return Sunday=0 through Saturday=6 in the manifest location timezone."""
+    return (location_localtime(manifest, timestamp).tm_wday + 1) % 7
 
 
 def formatted_price(value):
@@ -119,6 +124,95 @@ def resolve_special_day_prices(manifest, timestamp=None):
     return manifest
 
 
+def clock_seconds(value):
+    try:
+        parts = [int(part) for part in str(value).split(":")]
+        if len(parts) == 2:
+            parts.append(0)
+        if len(parts) != 3:
+            return None
+        hour, minute, second = parts
+        if not (0 <= hour <= 23 and 0 <= minute <= 59 and 0 <= second <= 59):
+            return None
+        return hour * 3600 + minute * 60 + second
+    except (TypeError, ValueError):
+        return None
+
+
+def inside_hidden_window(current, start, end):
+    if start is None or end is None or start == end:
+        return False
+    if start < end:
+        return start <= current < end
+    return current >= start or current < end
+
+
+def resolve_schedule_visibility(manifest, timestamp=None):
+    """Apply category hide windows using the location's local wall clock."""
+    local = location_localtime(manifest, timestamp)
+    current = local.tm_hour * 3600 + local.tm_min * 60 + local.tm_sec
+    rules = {}
+    for rule in manifest.get("schedule", []):
+        try:
+            category_name = str(rule.get("category") or "").strip().lower()
+        except AttributeError:
+            continue
+        if category_name:
+            rules.setdefault(category_name, []).append(rule)
+    for category in manifest.get("categories", []):
+        category.pop("schedule_visible", None)
+        matching = rules.get(str(category.get("name") or "").strip().lower(), [])
+        if not matching:
+            continue
+        hidden = False
+        for rule in matching:
+            start = clock_seconds(rule.get("hide_start_time"))
+            end = clock_seconds(rule.get("hide_end_time"))
+            if inside_hidden_window(current, start, end):
+                hidden = True
+                break
+        category["schedule_visible"] = not hidden
+    return manifest
+
+
+def prepare_runtime_fields(manifest, timestamp=None):
+    resolve_special_day_prices(manifest, timestamp)
+    resolve_schedule_visibility(manifest, timestamp)
+    return manifest
+
+
+def runtime_field_signature(manifest):
+    values = []
+    for combo in manifest.get("combos", []):
+        values.append(("price", combo.get("id"), combo.get("effective_display_price")))
+    for category in manifest.get("categories", []):
+        values.append(("schedule", category.get("id"), category.get("schedule_visible")))
+        for item in category.get("items", []):
+            values.append(("price", item.get("id"), item.get("effective_display_price")))
+    return values
+
+
+def wait_with_runtime_updates(seconds):
+    """Wake at least once per minute for local schedule/price transitions."""
+    deadline = time.time() + max(0, seconds)
+    while True:
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            return
+        time.sleep(min(60, remaining))
+        if time.time() >= deadline:
+            return
+        current_state = read_json(STATE, {}) or {}
+        manifest = current_state.get("manifest")
+        if not manifest:
+            continue
+        before = runtime_field_signature(manifest)
+        prepare_runtime_fields(manifest)
+        if runtime_field_signature(manifest) != before:
+            atomic_json(STATE, current_state)
+            persist_good_state(current_state)
+
+
 def ensure_dir(path):
     if not path:
         return
@@ -150,7 +244,7 @@ def restore_persistent_state():
     cached = read_json(PERSIST_STATE, {}) or {}
     if not cached.get("manifest"):
         return False
-    resolve_special_day_prices(cached["manifest"])
+    prepare_runtime_fields(cached["manifest"])
     for name in set(referenced_media(cached["manifest"])):
         source = os.path.join(PERSIST, name)
         destination = os.path.join(CACHE, name)
@@ -264,7 +358,7 @@ def cache_media(url, version):
 
 
 def enrich_media(manifest, show_ads):
-    today = time.strftime("%Y-%m-%d")
+    today = time.strftime("%Y-%m-%d", location_localtime(manifest))
     for combo in manifest["combos"]:
         combo["local_image"] = cache_media(combo.get("image_url"), combo.get("content_version"))
     for category in manifest["categories"]:
@@ -320,14 +414,14 @@ def main():
             etag, manifest, unchanged = fetch(config, etag)
             if unchanged:
                 if old_state.get("manifest"):
-                    resolve_special_day_prices(old_state["manifest"])
+                    prepare_runtime_fields(old_state["manifest"])
                 old_state.update({"ok": True, "checked_at": int(time.time()), "etag": etag, "error": None})
                 atomic_json(STATE, old_state)
                 if old_state.get("manifest"):
                     persist_good_state(old_state)
             else:
                 manifest = validate_manifest(manifest, config.get("screen_id", "combo"))
-                resolve_special_day_prices(manifest)
+                prepare_runtime_fields(manifest)
                 manifest = enrich_media(manifest, config.get("show_ads", True))
                 new_state = {"ok": True, "checked_at": int(time.time()), "etag": etag, "error": None, "manifest": manifest}
                 atomic_json(STATE, new_state)
@@ -336,14 +430,14 @@ def main():
         except Exception as exc:
             failed = True
             if old_state.get("manifest"):
-                resolve_special_day_prices(old_state["manifest"])
+                prepare_runtime_fields(old_state["manifest"])
             old_state.update({"ok": False, "checked_at": int(time.time()), "error": str(exc)[:300]})
             atomic_json(STATE, old_state)
             if old_state.get("manifest"):
                 persist_good_state(old_state)
             log("manifest refresh failed; retaining last valid data:", exc)
         interval = max(60, min(86400, int(config.get("refresh_seconds", 600) or 600)))
-        time.sleep(min(interval, 60) if failed else interval)
+        wait_with_runtime_updates(min(interval, 60) if failed else interval)
 
 
 if __name__ == "__main__":

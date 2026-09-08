@@ -5,7 +5,9 @@ gl.setup(NATIVE_WIDTH, NATIVE_HEIGHT)
 local font = resource.load_font("font.ttf")
 local offline_logo = resource.load_image("offline-logo.png")
 local white = resource.create_colored_texture(1, 1, 1, 1)
+local black = resource.create_colored_texture(0, 0, 0, 1)
 local surface = resource.create_colored_texture(1, 1, 1, 1)
+local divider = resource.create_colored_texture(0.90, 0.91, 0.93, 1)
 local placeholder = resource.create_colored_texture(1, 1, 1, 1)
 local saber_bands = {}
 for index = 1, 12 do
@@ -17,9 +19,11 @@ for index = 1, 12 do
     }
 end
 local saber_core = resource.create_colored_texture(0.78, 0.96, 1, 0.72)
-local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_upgrades_placement = "popcorn", combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, tax_font_scale_percent = 100, debug = false }
+local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_upgrades_placement = "popcorn", combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, hotfoods_font_scale_percent = 100, tax_font_scale_percent = 100, theme_overlay_fit = "stretch", theme_overlay_opacity_percent = 100, debug = false }
 local state = nil
 local font_region = nil
+local theme_overlay = nil
+local theme_overlay_asset = nil
 local images = {}
 local ad_media = {}
 local ad_media_errors = {}
@@ -36,7 +40,7 @@ local profiles = {
 local function sorted_available(values)
     local out = {}
     for _, value in ipairs(values or {}) do
-        if value.available ~= false then out[#out + 1] = value end
+        if value.available ~= false and value.schedule_visible ~= false then out[#out + 1] = value end
     end
     table.sort(out, function(a, b)
         if (a.display_order or 0) == (b.display_order or 0) then return (a.name or "") < (b.name or "") end
@@ -81,9 +85,23 @@ local function load_media(manifest)
     end
 end
 
+local function load_theme_overlay(value)
+    local selected = value and value.theme_overlay
+    local asset = type(selected) == "table" and selected.asset_name or nil
+    if not asset or asset == "" then asset = "transparent-overlay.png" end
+    if asset == theme_overlay_asset then return end
+    theme_overlay_asset = asset
+    local ok, result = pcall(resource.load_image, asset)
+    theme_overlay = ok and result or nil
+    if not ok then print("theme overlay load failed: " .. tostring(asset)) end
+end
+
 util.json_watch("config.json", function(value)
     config = value or config
+    load_theme_overlay(config)
 end)
+
+load_theme_overlay(config)
 
 util.json_watch("state.json", function(value)
     state = value
@@ -100,6 +118,8 @@ local function scaled_font_size(size)
         configured = tonumber(config.combo_font_scale_percent) or legacy
     elseif font_region == "alacarte" then
         configured = tonumber(config.alacarte_font_scale_percent) or legacy
+    elseif font_region == "hotfoods" then
+        configured = tonumber(config.hotfoods_font_scale_percent) or legacy
     elseif font_region == "tax" then
         configured = tonumber(config.tax_font_scale_percent) or legacy
     end
@@ -184,7 +204,7 @@ local function render_offline_indicator(w, h)
     offline_logo:draw(w-margin-indicator_w, h-margin-indicator_h, w-margin, h-margin, .88)
 end
 
-local function render_advertisement(manifest, w, h)
+local function render_advertisement(manifest, x1, y1, x2, y2, preserve_aspect)
     local ads = {}
     for _, ad in ipairs(manifest.advertisements or {}) do
         local holder = ad_media[ad.local_media]
@@ -212,7 +232,11 @@ local function render_advertisement(manifest, w, h)
     end
     local holder = selected and ad_media[selected.local_media]
     if not holder then return false end
-    holder.resource:draw(0, 0, w, h)
+    if preserve_aspect then
+        util.draw_correct(holder.resource, x1, y1, x2, y2)
+    else
+        holder.resource:draw(x1, y1, x2, y2)
+    end
     return true
 end
 
@@ -221,7 +245,7 @@ local function render_combo(manifest, w, h, with_ads)
     local combos = sorted_available(manifest.combos)
     local margin, gap = w * 0.018, w * 0.008
     local grid_top
-    local has_ad = with_ads and render_advertisement(manifest, w, h * 0.5)
+    local has_ad = with_ads and render_advertisement(manifest, 0, 0, w, h * 0.5)
     if has_ad then
         grid_top = h * 0.5 + margin
     else
@@ -265,6 +289,8 @@ local function render_categories(manifest, w, h)
             drinks[#drinks + 1] = category
         elseif name == "combo upgrades" or name == "combo upgrade" then
             upgrades[#upgrades + 1] = category
+        elseif name == "hot food" or name == "hot foods" then
+            -- Hot Food has its own scheduled screen layout.
         else
             categories[#categories + 1] = category
         end
@@ -356,6 +382,51 @@ local function render_categories(manifest, w, h)
     end
 end
 
+local function render_hotfoods(manifest, w, h)
+    font_region = "hotfoods"
+    local split = w * 0.5
+    white:draw(0, 0, split, h)
+    black:draw(split, 0, w, h)
+
+    local category = nil
+    for _, candidate in ipairs(manifest.categories or {}) do
+        local name = string.lower(candidate.name or "")
+        if name == "hot food" or name == "hot foods" then
+            category = candidate
+            break
+        end
+    end
+
+    local title = category and category.name or "Hot Food"
+    centered(0, split, h*.045, string.upper(title), math.min(split,h)*.060, {0.76,0.17,0.11,1})
+    local items = category and sorted_available(category.items) or {}
+    if category and category.schedule_visible == false then
+        centered(0, split, h*.47, "CURRENTLY UNAVAILABLE", math.min(split,h)*.034, {0.38,0.40,0.44,1})
+    elseif #items == 0 then
+        centered(0, split, h*.47, "NO HOT FOOD ITEMS AVAILABLE", math.min(split,h)*.027, {0.38,0.40,0.44,1})
+    else
+        local row_h = math.min(h*.075, h*.58/#items)
+        local list_h = row_h * #items
+        local list_top = math.max(h*.24, h*.56-list_h*.5)
+        local item_size = math.min(split*.038, row_h*.43)
+        for index, item in ipairs(items) do
+            local y = list_top + (index-1)*row_h
+            local price = money(item)
+            text(split*.052, y+row_h*.20, item.name or "", item_size)
+            text(split*.948-font:width(price,scaled_font_size(item_size)), y+row_h*.20, price, item_size)
+            divider:draw(split*.038, y+row_h*.88, split*.962, y+row_h*.895)
+        end
+    end
+
+    font_region = "tax"
+    centered(0, split, h*.955, manifest.screen.tax_disclaimer or "", math.min(split,h)*.014, {0.2,0.25,0.3,1})
+    font_region = "hotfoods"
+
+    if not render_advertisement(manifest, split, 0, w, h, true) then
+        centered(split, w, h*.48, "NO MEDIA AVAILABLE", math.min(w-split,h)*.028, {0.42,0.45,0.52,1})
+    end
+end
+
 local function render_saber_edges(w, h, center, y1)
     y1 = y1 or 0
     local points = {0, w}
@@ -380,6 +451,27 @@ local function render_full(manifest, w, h)
     gl.translate(left, 0)
     render_categories(manifest, w-left, h)
     gl.popMatrix()
+end
+
+local function render_theme_overlay(w, h)
+    if not theme_overlay then return end
+    local opacity = math.max(0, math.min(100, tonumber(config.theme_overlay_opacity_percent) or 100)) / 100
+    if opacity <= 0 then return end
+    local status, iw, ih = theme_overlay:state()
+    if status ~= "loaded" or not iw or not ih or iw == 0 or ih == 0 then return end
+    local fit = config.theme_overlay_fit or "stretch"
+    if fit == "stretch" then
+        theme_overlay:draw(0, 0, w, h, opacity)
+        return
+    end
+    local scale
+    if fit == "cover" then
+        scale = math.max(w/iw, h/ih)
+    else
+        scale = math.min(w/iw, h/ih)
+    end
+    local draw_w, draw_h = iw*scale, ih*scale
+    theme_overlay:draw((w-draw_w)/2, (h-draw_h)/2, (w+draw_w)/2, (h+draw_h)/2, opacity)
 end
 
 function node.render()
@@ -407,6 +499,7 @@ function node.render()
             render_saber_edges(w,h,false)
             render_combo(manifest,w,h,true)
         elseif layout == "alacarte" then render_saber_edges(w,h,false); render_categories(manifest,w,h)
+        elseif layout == "hotfoods" then render_hotfoods(manifest,w,h)
         else render_full(manifest,w,h) end
         font_region = nil
         if config.debug then
@@ -417,5 +510,6 @@ function node.render()
         end
         if state.ok == false then render_offline_indicator(w, h) end
     end
+    render_theme_overlay(w, h)
     gl.popMatrix()
 end
