@@ -46,6 +46,7 @@ local function sorted_available(values)
 end
 
 local function money(value)
+    if value.effective_display_price and value.effective_display_price ~= "" then return value.effective_display_price end
     if value.display_price and value.display_price ~= "" then return value.display_price end
     return string.format("$%.2f", tonumber(value.price) or 0)
 end

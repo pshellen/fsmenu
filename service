@@ -25,6 +25,7 @@ PERSIST_STATE = os.path.join(PERSIST, "last-good-state.json") if PERSIST else No
 ALLOWED_MEDIA = {"image", "video"}
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv"}
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+ZONEINFO_ROOT = "/usr/share/zoneinfo"
 try:
     STRING_TYPES = (basestring,)
 except NameError:
@@ -62,6 +63,62 @@ def atomic_copy(source, destination):
     os.rename(temp, destination)
 
 
+def location_day_of_week(manifest, timestamp=None):
+    """Return Sunday=0 through Saturday=6 in the manifest location timezone."""
+    if timestamp is None:
+        timestamp = time.time()
+    timezone_name = str((manifest.get("location") or {}).get("timezone") or "").strip()
+    if not timezone_name or not hasattr(time, "tzset"):
+        return (time.localtime(timestamp).tm_wday + 1) % 7
+    zone_root = os.path.realpath(ZONEINFO_ROOT)
+    zone_path = os.path.realpath(os.path.join(zone_root, timezone_name))
+    if not zone_path.startswith(zone_root + os.sep) or not os.path.isfile(zone_path):
+        return (time.localtime(timestamp).tm_wday + 1) % 7
+    had_timezone = "TZ" in os.environ
+    previous_timezone = os.environ.get("TZ")
+    try:
+        os.environ["TZ"] = timezone_name
+        time.tzset()
+        return (time.localtime(timestamp).tm_wday + 1) % 7
+    finally:
+        if had_timezone:
+            os.environ["TZ"] = previous_timezone
+        else:
+            del os.environ["TZ"]
+        time.tzset()
+
+
+def formatted_price(value):
+    try:
+        return "$%.2f" % float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def resolve_special_day_prices(manifest, timestamp=None):
+    """Add an effective price for matching day_prices without replacing base prices."""
+    current_day = location_day_of_week(manifest, timestamp)
+    values = list(manifest.get("combos", []))
+    for category in manifest.get("categories", []):
+        values.extend(category.get("items", []))
+    for value in values:
+        value.pop("effective_display_price", None)
+        value.pop("special_day_price_active", None)
+        for day_price in value.get("day_prices", []) or []:
+            try:
+                matches = int(day_price.get("day_of_week")) == current_day
+            except (AttributeError, TypeError, ValueError):
+                matches = False
+            if not matches:
+                continue
+            display_price = day_price.get("display_price") or formatted_price(day_price.get("price"))
+            if display_price:
+                value["effective_display_price"] = display_price
+                value["special_day_price_active"] = True
+            break
+    return manifest
+
+
 def ensure_dir(path):
     if not path:
         return
@@ -93,6 +150,7 @@ def restore_persistent_state():
     cached = read_json(PERSIST_STATE, {}) or {}
     if not cached.get("manifest"):
         return False
+    resolve_special_day_prices(cached["manifest"])
     for name in set(referenced_media(cached["manifest"])):
         source = os.path.join(PERSIST, name)
         destination = os.path.join(CACHE, name)
@@ -250,6 +308,7 @@ def main():
     etag = None
     last_config_fingerprint = None
     while True:
+        failed = False
         config = read_json(CONFIG, {}) or {}
         stable_config = {k: config.get(k) for k in ("endpoint", "location", "location_id", "screen_id", "token", "show_ads")}
         fingerprint = hashlib.sha256(json.dumps(stable_config, sort_keys=True).encode("utf-8")).hexdigest()
@@ -260,18 +319,28 @@ def main():
         try:
             etag, manifest, unchanged = fetch(config, etag)
             if unchanged:
+                if old_state.get("manifest"):
+                    resolve_special_day_prices(old_state["manifest"])
                 old_state.update({"ok": True, "checked_at": int(time.time()), "etag": etag, "error": None})
                 atomic_json(STATE, old_state)
+                if old_state.get("manifest"):
+                    persist_good_state(old_state)
             else:
-                manifest = enrich_media(validate_manifest(manifest, config.get("screen_id", "combo")), config.get("show_ads", True))
+                manifest = validate_manifest(manifest, config.get("screen_id", "combo"))
+                resolve_special_day_prices(manifest)
+                manifest = enrich_media(manifest, config.get("show_ads", True))
                 new_state = {"ok": True, "checked_at": int(time.time()), "etag": etag, "error": None, "manifest": manifest}
                 atomic_json(STATE, new_state)
                 persist_good_state(new_state)
                 log("published manifest", manifest.get("manifest_version"))
         except Exception as exc:
             failed = True
+            if old_state.get("manifest"):
+                resolve_special_day_prices(old_state["manifest"])
             old_state.update({"ok": False, "checked_at": int(time.time()), "error": str(exc)[:300]})
             atomic_json(STATE, old_state)
+            if old_state.get("manifest"):
+                persist_good_state(old_state)
             log("manifest refresh failed; retaining last valid data:", exc)
         interval = max(60, min(86400, int(config.get("refresh_seconds", 600) or 600)))
         time.sleep(min(interval, 60) if failed else interval)

@@ -12,6 +12,8 @@ Actual maximum output resolution depends on the info-beamer OS release, HDMI con
 
 The service sends `If-None-Match`, accepts empty 304 responses, validates new JSON before publishing it, atomically updates player state, caches media by URL plus content version, and retains the last valid manifest when a refresh fails. The last-known-good manifest and its media are also copied to info-beamer's persistent `SCRATCH` storage and restored before the first network request after a restart. Combo images use each combo's `image_url` and appear in the image area above the name, description, and price. A neutral placeholder is used when `image_url` is null or empty.
 
+Combo `day_prices` are resolved on the device using the location timezone and the endpoint's Sunday=0 through Saturday=6 `day_of_week` convention. The matching price is recalculated on every refresh, including HTTP 304 responses and offline cached-state refreshes, while the normal `display_price` remains the fallback.
+
 ## Hosted import
 
 1. In info-beamer Hosted, open **Packages**, choose **Import package**, and upload `fscinema-menu-board.zip` (or import the repository URL if this directory is hosted in Git).
