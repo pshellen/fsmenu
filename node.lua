@@ -17,7 +17,7 @@ for index = 1, 12 do
     }
 end
 local saber_core = resource.create_colored_texture(0.78, 0.96, 1, 0.72)
-local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, tax_font_scale_percent = 100, debug = false }
+local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_upgrades_placement = "popcorn", combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, tax_font_scale_percent = 100, debug = false }
 local state = nil
 local font_region = nil
 local images = {}
@@ -269,13 +269,21 @@ local function render_categories(manifest, w, h)
             categories[#categories + 1] = category
         end
     end
+    if #drinks > 0 then categories[#categories + 1] = {name="Refreshing Drinks", groups=drinks} end
     if #upgrades > 0 then
+        local placement = config.combo_upgrades_placement or "popcorn"
+        local target_name = ({popcorn="popcorn", snacks="snacks", drinks="refreshing drinks"})[placement]
         local attached = false
         for index, category in ipairs(categories) do
-            if string.lower(category.name or "") == "popcorn" then
+            if target_name and string.lower(category.name or "") == target_name then
                 local combined = {}
                 for key, value in pairs(category) do combined[key] = value end
-                combined.groups = {category}
+                combined.groups = {}
+                if category.groups then
+                    for _, group in ipairs(category.groups) do combined.groups[#combined.groups + 1] = group end
+                else
+                    combined.groups[1] = category
+                end
                 for _, upgrade in ipairs(upgrades) do combined.groups[#combined.groups + 1] = upgrade end
                 categories[index] = combined
                 attached = true
@@ -286,7 +294,6 @@ local function render_categories(manifest, w, h)
             for _, upgrade in ipairs(upgrades) do categories[#categories + 1] = upgrade end
         end
     end
-    if #drinks > 0 then categories[#categories + 1] = {name="Refreshing Drinks", groups=drinks} end
     local margin, gap = w*.025, w*.012
     local columns = (w/h > 1.25) and math.min(3, #categories) or math.min(2, #categories)
     columns = math.max(1, columns)

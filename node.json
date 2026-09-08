@@ -83,6 +83,13 @@
       "max": 300
     },
     {
+      "title": "Combo upgrades placement",
+      "name": "combo_upgrades_placement",
+      "type": "select",
+      "options": [["popcorn", "Bottom of Popcorn"], ["snacks", "Bottom of Snacks"], ["drinks", "Bottom of Refreshing Drinks"], ["separate", "Separate card"]],
+      "default": "popcorn"
+    },
+    {
       "title": "Combo font size (%)",
       "name": "combo_font_scale_percent",
       "type": "integer",

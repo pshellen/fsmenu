@@ -31,6 +31,7 @@ The token field is visually masked in Hosted but is ultimately delivered to the 
 - **Display profile:** Must match the intended canvas. The player letterboxes safely if the physical output differs.
 - **Playback mode:** `Configured screen` renders the selected manifest normally. `Alternate combo / a la carte` uses a `full` manifest and switches between full-screen combo and à-la-carte pages; configure `screen_id=full` and typically use 1920×1080.
 - **Page duration:** Number of seconds each page remains visible in alternating mode; defaults to 25 seconds.
+- **Combo upgrades placement:** When a Combo Upgrade category is present, place it at the bottom of Popcorn, Snacks, Refreshing Drinks, or on a separate card. Defaults to Popcorn; a missing target falls back to a separate card.
 - **Combo font size:** Independently scales combo names, descriptions, and prices from 75% to 250%; defaults to 100%.
 - **A la carte font size:** Independently scales category headings, item names, and prices from 75% to 250%; defaults to 100%.
 - **Sales tax font size:** Independently scales the tax disclaimer from 50% to 250%; defaults to 100%.
@@ -69,6 +70,6 @@ Run `python3 -m unittest discover -s tests -v`. For visual testing, run `python3
 
 The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`.
 
-## Version 1.1.10
+## Version 1.1.14
 
-Python 2.7 service compatibility fix, plus schema validation, ETag revalidation, offline retention, responsive layout profiles, advertisement rotation, and combo image slots.
+Adds location-timezone special-day pricing and configurable Combo Upgrade placement, along with Python 2.7 service compatibility, schema validation, ETag revalidation, offline retention, responsive layouts, advertisement rotation, and combo image slots.
