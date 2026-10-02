@@ -34,6 +34,7 @@ The token field is visually masked in Hosted but is ultimately delivered to the 
 - **Combo upgrades placement:** When a Combo Upgrade category is present, place it at the bottom of Popcorn, Snacks, Refreshing Drinks, or on a separate card. Defaults to Popcorn; a missing target falls back to a separate card.
 - **Combo font size:** Independently scales combo names, descriptions, and prices from 75% to 250%; defaults to 100%.
 - **A la carte font size:** Independently scales category headings, item names, and prices from 75% to 250%; defaults to 100%.
+- **Refreshing Drinks font size:** Independently scales the combined Refreshing Drinks heading, group headings, item names, and prices from 75% to 250%; defaults to 100%. Existing configurations without this setting fall back to the A la carte font size.
 - **Hot Foods font size:** Independently scales the dedicated Hot Foods heading, item names, and prices from 75% to 250%; defaults to 100%.
 - **Sales tax font size:** Independently scales the tax disclaimer from 50% to 250%; defaults to 100%.
 
@@ -83,6 +84,14 @@ The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`
 ## Overlay artwork
 
 Create the PNG at the same pixel dimensions and orientation as the selected display profile whenever possible. Keep menu-readable areas transparent and place decorative or takeover artwork only where intended. Because the overlay is the final rendering layer, it also appears above advertisements, debug status, and the offline indicator. Swap or remove the selected asset in Hosted without rebuilding the package.
+
+## Version 1.5.1
+
+Reduces the top and bottom margins of the a-la-carte card grid to provide more vertical room for increased font scaling while retaining the existing horizontal spacing.
+
+## Version 1.5.0
+
+Adds an independent font-size control for the complete Refreshing Drinks section, including its heading, drink groups, items, prices, and any Combo Upgrades placed in that section.
 
 ## Version 1.4.0
 

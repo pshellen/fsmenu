@@ -19,7 +19,7 @@ for index = 1, 12 do
     }
 end
 local saber_core = resource.create_colored_texture(0.78, 0.96, 1, 0.72)
-local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_upgrades_placement = "popcorn", combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, hotfoods_font_scale_percent = 100, tax_font_scale_percent = 100, theme_overlay_fit = "stretch", theme_overlay_opacity_percent = 100, debug = false }
+local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_upgrades_placement = "popcorn", combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, refreshing_drinks_font_scale_percent = 100, hotfoods_font_scale_percent = 100, tax_font_scale_percent = 100, theme_overlay_fit = "stretch", theme_overlay_opacity_percent = 100, debug = false }
 local state = nil
 local font_region = nil
 local theme_overlay = nil
@@ -130,6 +130,8 @@ local function scaled_font_size(size)
         configured = tonumber(config.combo_font_scale_percent) or legacy
     elseif font_region == "alacarte" then
         configured = tonumber(config.alacarte_font_scale_percent) or legacy
+    elseif font_region == "refreshing_drinks" then
+        configured = tonumber(config.refreshing_drinks_font_scale_percent) or tonumber(config.alacarte_font_scale_percent) or legacy
     elseif font_region == "hotfoods" then
         configured = tonumber(config.hotfoods_font_scale_percent) or legacy
     elseif font_region == "tax" then
@@ -336,15 +338,19 @@ local function render_categories(manifest, w, h)
             for _, upgrade in ipairs(upgrades) do categories[#categories + 1] = upgrade end
         end
     end
-    local margin, gap = w*.025, w*.012
+    -- Keep the horizontal breathing room, but use a much smaller vertical
+    -- margin so scaled menu text has more usable card height.
+    local margin_x, margin_y, gap = w*.025, h*.012, w*.012
     local columns = (w/h > 1.25) and math.min(3, #categories) or math.min(2, #categories)
     columns = math.max(1, columns)
     local rows = math.ceil(#categories/columns)
-    local cw = (w-margin*2-gap*(columns-1))/columns
-    local ch = (h-margin*2-gap*(rows-1))/rows
+    local cw = (w-margin_x*2-gap*(columns-1))/columns
+    local ch = (h-margin_y*2-gap*(rows-1))/rows
     for i, category in ipairs(categories) do
+        local category_name = string.lower(category.name or "")
+        font_region = category_name == "refreshing drinks" and "refreshing_drinks" or "alacarte"
         local col, row = (i-1)%columns, math.floor((i-1)/columns)
-        local x, y = margin+col*(cw+gap), margin+row*(ch+gap)
+        local x, y = margin_x+col*(cw+gap), margin_y+row*(ch+gap)
         white:draw(x, y, x+cw, y+ch)
         local heading = math.min(cw*.085, ch*.10)
         text(x+cw*.05, y+ch*.05, category.name, heading, 0.02, 0.16, 0.34, 1)
@@ -354,7 +360,6 @@ local function render_categories(manifest, w, h)
                 if item.local_image then hero_path = item.local_image; break end
             end
         end
-        local category_name = string.lower(category.name or "")
         local has_hero = hero_path and (category_name == "popcorn" or category_name == "snacks")
         if has_hero then fit_image(hero_path, x+cw*.06, y+ch*.14, x+cw*.94, y+ch*.50) end
         local groups = category.groups or {category}
