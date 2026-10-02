@@ -144,18 +144,24 @@ local function scaled_font_size(size)
     return size * percent / 100
 end
 
+local function display_string(value)
+    local value_type = type(value)
+    if value_type == "string" or value_type == "number" then return tostring(value) end
+    return ""
+end
+
 local function text(x, y, value, size, r, g, b, a)
-    font:write(x, y, tostring(value or ""), scaled_font_size(size), r or 0.05, g or 0.08, b or 0.13, a or 1)
+    font:write(x, y, display_string(value), scaled_font_size(size), r or 0.05, g or 0.08, b or 0.13, a or 1)
 end
 
 local function centered(x1, x2, y, value, size, color)
-    local width = font:width(tostring(value or ""), scaled_font_size(size))
+    local width = font:width(display_string(value), scaled_font_size(size))
     text(x1 + math.max(0, (x2 - x1 - width) / 2), y, value, size, unpack(color or {0.05, 0.08, 0.13, 1}))
 end
 
 local function wrapped_centered(x1, x2, y, value, size, line_height, max_lines, color)
     local words, lines, current = {}, {}, ""
-    for word in tostring(value or ""):gmatch("%S+") do words[#words + 1] = word end
+    for word in display_string(value):gmatch("%S+") do words[#words + 1] = word end
     local max_width = x2 - x1
     for _, word in ipairs(words) do
         local candidate = current == "" and word or current .. " " .. word
@@ -178,7 +184,7 @@ local function wrapped_centered(x1, x2, y, value, size, line_height, max_lines, 
 end
 
 local function split_two_lines(value, size, max_width)
-    local text_value = tostring(value or "")
+    local text_value = display_string(value)
     if font:width(text_value, scaled_font_size(size)) <= max_width then return {text_value} end
     local words = {}
     for word in text_value:gmatch("%S+") do words[#words + 1] = word end

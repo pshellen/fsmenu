@@ -86,6 +86,10 @@ The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`
 
 Create the PNG at the same pixel dimensions and orientation as the selected display profile whenever possible. Keep menu-readable areas transparent and place decorative or takeover artwork only where intended. Because the overlay is the final rendering layer, it also appears above advertisements, debug status, and the offline indicator. Swap or remove the selected asset in Hosted without rebuilding the package.
 
+## Version 1.6.1
+
+Treats JSON `null` text values as blank so optional fields such as the tax disclaimer never render as `userdata: null`.
+
 ## Version 1.6.0
 
 Separates the Refreshing Drinks card title scaling from its group headings, item names, and prices by providing two independent controls.
