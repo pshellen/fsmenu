@@ -106,6 +106,14 @@
       "max": 250
     },
     {
+      "title": "Refreshing Drinks title font size (%)",
+      "name": "refreshing_drinks_title_font_scale_percent",
+      "type": "integer",
+      "default": 100,
+      "min": 75,
+      "max": 250
+    },
+    {
       "title": "Refreshing Drinks font size (%)",
       "name": "refreshing_drinks_font_scale_percent",
       "type": "integer",

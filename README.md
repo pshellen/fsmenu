@@ -34,7 +34,8 @@ The token field is visually masked in Hosted but is ultimately delivered to the 
 - **Combo upgrades placement:** When a Combo Upgrade category is present, place it at the bottom of Popcorn, Snacks, Refreshing Drinks, or on a separate card. Defaults to Popcorn; a missing target falls back to a separate card.
 - **Combo font size:** Independently scales combo names, descriptions, and prices from 75% to 250%; defaults to 100%.
 - **A la carte font size:** Independently scales category headings, item names, and prices from 75% to 250%; defaults to 100%.
-- **Refreshing Drinks font size:** Independently scales the combined Refreshing Drinks heading, group headings, item names, and prices from 75% to 250%; defaults to 100%. Existing configurations without this setting fall back to the A la carte font size.
+- **Refreshing Drinks title font size:** Independently scales only the combined Refreshing Drinks card title from 75% to 250%; defaults to 100%. Existing configurations without this setting fall back to the A la carte font size.
+- **Refreshing Drinks font size:** Independently scales the group headings, item names, and prices in the Refreshing Drinks card from 75% to 250%; defaults to 100%. It does not affect the card title. Existing configurations without this setting fall back to the A la carte font size.
 - **Hot Foods font size:** Independently scales the dedicated Hot Foods heading, item names, and prices from 75% to 250%; defaults to 100%.
 - **Sales tax font size:** Independently scales the tax disclaimer from 50% to 250%; defaults to 100%.
 
@@ -84,6 +85,10 @@ The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`
 ## Overlay artwork
 
 Create the PNG at the same pixel dimensions and orientation as the selected display profile whenever possible. Keep menu-readable areas transparent and place decorative or takeover artwork only where intended. Because the overlay is the final rendering layer, it also appears above advertisements, debug status, and the offline indicator. Swap or remove the selected asset in Hosted without rebuilding the package.
+
+## Version 1.6.0
+
+Separates the Refreshing Drinks card title scaling from its group headings, item names, and prices by providing two independent controls.
 
 ## Version 1.5.1
 

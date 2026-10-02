@@ -19,7 +19,7 @@ for index = 1, 12 do
     }
 end
 local saber_core = resource.create_colored_texture(0.78, 0.96, 1, 0.72)
-local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_upgrades_placement = "popcorn", combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, refreshing_drinks_font_scale_percent = 100, hotfoods_font_scale_percent = 100, tax_font_scale_percent = 100, theme_overlay_fit = "stretch", theme_overlay_opacity_percent = 100, debug = false }
+local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_upgrades_placement = "popcorn", combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, refreshing_drinks_title_font_scale_percent = 100, refreshing_drinks_font_scale_percent = 100, hotfoods_font_scale_percent = 100, tax_font_scale_percent = 100, theme_overlay_fit = "stretch", theme_overlay_opacity_percent = 100, debug = false }
 local state = nil
 local font_region = nil
 local theme_overlay = nil
@@ -132,6 +132,8 @@ local function scaled_font_size(size)
         configured = tonumber(config.alacarte_font_scale_percent) or legacy
     elseif font_region == "refreshing_drinks" then
         configured = tonumber(config.refreshing_drinks_font_scale_percent) or tonumber(config.alacarte_font_scale_percent) or legacy
+    elseif font_region == "refreshing_drinks_title" then
+        configured = tonumber(config.refreshing_drinks_title_font_scale_percent) or tonumber(config.alacarte_font_scale_percent) or legacy
     elseif font_region == "hotfoods" then
         configured = tonumber(config.hotfoods_font_scale_percent) or legacy
     elseif font_region == "tax" then
@@ -348,12 +350,14 @@ local function render_categories(manifest, w, h)
     local ch = (h-margin_y*2-gap*(rows-1))/rows
     for i, category in ipairs(categories) do
         local category_name = string.lower(category.name or "")
-        font_region = category_name == "refreshing drinks" and "refreshing_drinks" or "alacarte"
+        local is_refreshing_drinks = category_name == "refreshing drinks"
+        font_region = is_refreshing_drinks and "refreshing_drinks_title" or "alacarte"
         local col, row = (i-1)%columns, math.floor((i-1)/columns)
         local x, y = margin_x+col*(cw+gap), margin_y+row*(ch+gap)
         white:draw(x, y, x+cw, y+ch)
         local heading = math.min(cw*.085, ch*.10)
         text(x+cw*.05, y+ch*.05, category.name, heading, 0.02, 0.16, 0.34, 1)
+        font_region = is_refreshing_drinks and "refreshing_drinks" or "alacarte"
         local hero_path = category.local_image
         if not hero_path then
             for _, item in ipairs(category.items or {}) do
