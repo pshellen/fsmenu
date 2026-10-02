@@ -83,6 +83,18 @@ local function load_media(manifest)
             end
         end
     end
+    for _, media in ipairs(manifest.hotfoods_media or {}) do
+        local path = media.local_media
+        if path and path ~= "" and not ad_media[path] then
+            if media.media_type == "video" then
+                local ok, result = pcall(resource.load_video, {file=path, audio=false, looped=true, paused=false})
+                if ok then ad_media[path] = {resource=result, media_type="video"} end
+            else
+                local ok, result = pcall(resource.load_image, path)
+                if ok then ad_media[path] = {resource=result, media_type="image"} end
+            end
+        end
+    end
 end
 
 local function load_theme_overlay(value)
@@ -204,9 +216,9 @@ local function render_offline_indicator(w, h)
     offline_logo:draw(w-margin-indicator_w, h-margin-indicator_h, w-margin, h-margin, .88)
 end
 
-local function render_advertisement(manifest, x1, y1, x2, y2, preserve_aspect)
+local function render_media(values, x1, y1, x2, y2, preserve_aspect)
     local ads = {}
-    for _, ad in ipairs(manifest.advertisements or {}) do
+    for _, ad in ipairs(values or {}) do
         local holder = ad_media[ad.local_media]
         if holder then
             local ok, status, detail = pcall(function() return holder.resource:state() end)
@@ -238,6 +250,10 @@ local function render_advertisement(manifest, x1, y1, x2, y2, preserve_aspect)
         holder.resource:draw(x1, y1, x2, y2)
     end
     return true
+end
+
+local function render_advertisement(manifest, x1, y1, x2, y2, preserve_aspect)
+    return render_media(manifest.advertisements, x1, y1, x2, y2, preserve_aspect)
 end
 
 local function render_combo(manifest, w, h, with_ads)
@@ -422,7 +438,7 @@ local function render_hotfoods(manifest, w, h)
     centered(0, split, h*.955, manifest.screen.tax_disclaimer or "", math.min(split,h)*.014, {0.2,0.25,0.3,1})
     font_region = "hotfoods"
 
-    if not render_advertisement(manifest, split, 0, w, h, true) then
+    if not render_media(manifest.hotfoods_media, split, 0, w, h, true) then
         centered(split, w, h*.48, "NO MEDIA AVAILABLE", math.min(w-split,h)*.028, {0.42,0.45,0.52,1})
     end
 end

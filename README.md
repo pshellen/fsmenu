@@ -50,7 +50,7 @@ The endpoint's `screen.orientation` and source dimensions are retained as data, 
 
 ## Hot Foods screen
 
-Select **Hot Foods** with the 1920×1080 display profile for the dedicated split layout. The left half shows the available Hot Food items and tax disclaimer; the right half rotates the manifest's active advertisement images and H.264 videos from the local device cache. If no playable media exists, the right half remains black with a small “No media available” message.
+Select **Hot Foods** with the 1920×1080 display profile for the dedicated split layout. The left half shows the available Hot Food items and tax disclaimer; the right half rotates images and H.264 videos from the manifest's `hotfoods_media` playlist using the local device cache. `hotfoods_media_urls` is supported as a URL-only compatibility fallback. General `advertisements` are not used by this layout. If no playable Hot Foods media exists, the right half remains black with a small “No media available” message.
 
 The service honors the web app's `schedule` records using each location's timezone. `hide_start_time` and `hide_end_time` can cross midnight (for example, Pottstown hides Hot Food from 10:05 PM until 10:30 AM). Schedule state is recalculated locally at least once per minute without redownloading the manifest or media. Outside the display window, prices and items are replaced by “Currently unavailable.”
 
@@ -83,6 +83,10 @@ The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`
 ## Overlay artwork
 
 Create the PNG at the same pixel dimensions and orientation as the selected display profile whenever possible. Keep menu-readable areas transparent and place decorative or takeover artwork only where intended. Because the overlay is the final rendering layer, it also appears above advertisements, debug status, and the offline indicator. Swap or remove the selected asset in Hosted without rebuilding the package.
+
+## Version 1.4.0
+
+Uses the dedicated `hotfoods_media` playlist on Hot Foods screens, with support for `hotfoods_media_urls` as a fallback, and accepts screen-specific manifests that omit `combos`.
 
 ## Version 1.3.0
 

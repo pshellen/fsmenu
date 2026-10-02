@@ -236,6 +236,9 @@ def referenced_media(manifest):
     for ad in manifest.get("advertisements", []):
         if ad.get("local_media"):
             yield ad["local_media"]
+    for media in manifest.get("hotfoods_media", []):
+        if media.get("local_media"):
+            yield media["local_media"]
 
 
 def restore_persistent_state():
@@ -268,8 +271,16 @@ def persist_good_state(value):
 def validate_manifest(value, expected_screen):
     if not isinstance(value, dict) or value.get("schema_version") != 1:
         raise ValueError("unsupported or missing schema_version")
+    # Screen-specific responses may omit collections that do not apply. In
+    # particular, the Hot Foods response has categories but no combos.
+    value.setdefault("combos", [])
+    value.setdefault("advertisements", [])
+    value.setdefault("schedule", [])
     for key in ("combos", "categories", "advertisements", "schedule"):
         if not isinstance(value.get(key), list):
+            raise ValueError("%s must be an array" % key)
+    for key in ("hotfoods_media", "hotfoods_media_urls"):
+        if key in value and not isinstance(value[key], list):
             raise ValueError("%s must be an array" % key)
     screen = value.get("screen")
     location = value.get("location")
@@ -375,6 +386,31 @@ def enrich_media(manifest, show_ads):
                 if ad["local_media"]:
                     ads.append(ad)
     manifest["advertisements"] = sorted(ads, key=lambda x: (x.get("display_order", 0), x.get("name", "")))
+
+    # Hot Foods media is a dedicated playlist and must not be sourced from the
+    # general advertisements array. Accept the URL-only form as a compatibility
+    # fallback when the richer collection is absent.
+    hotfoods_media = manifest.get("hotfoods_media") or []
+    if not hotfoods_media:
+        hotfoods_media = [
+            {"url": url, "display_order": index + 1}
+            for index, url in enumerate(manifest.get("hotfoods_media_urls", []))
+        ]
+    cached_hotfoods_media = []
+    for media in hotfoods_media:
+        if not isinstance(media, dict):
+            continue
+        media_type = detect_media_type(media.get("url"), media.get("media_type"))
+        if media_type not in ALLOWED_MEDIA:
+            continue
+        media["media_type"] = media_type
+        media["local_media"] = cache_media(media.get("url"), media.get("content_version"))
+        if media["local_media"]:
+            cached_hotfoods_media.append(media)
+    manifest["hotfoods_media"] = sorted(
+        cached_hotfoods_media,
+        key=lambda x: (x.get("display_order", 0), x.get("url", "")),
+    )
     return manifest
 
 
