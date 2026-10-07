@@ -445,16 +445,16 @@ def fetch(config, etag, screen_id=None):
     return response.headers.get("ETag"), response.json(), False
 
 
-def combo_hotfoods_manifest(combo, hotfoods):
-    """Combine two validated screen responses into one player manifest."""
-    combined = combo
+def menu_hotfoods_manifest(menu, hotfoods):
+    """Combine a combo or a-la-carte response with a Hot Foods response."""
+    combined = menu
     combined["hotfoods_categories"] = hotfoods.get("categories", [])
     combined["hotfoods_screen"] = hotfoods.get("screen", {})
     combined["hotfoods_media"] = hotfoods.get("hotfoods_media", [])
     combined["hotfoods_media_urls"] = hotfoods.get("hotfoods_media_urls", [])
-    combined["schedule"] = list(combo.get("schedule", [])) + list(hotfoods.get("schedule", []))
+    combined["schedule"] = list(menu.get("schedule", [])) + list(hotfoods.get("schedule", []))
     combined["manifest_version"] = "%s / %s" % (
-        combo.get("manifest_version", "combo"),
+        menu.get("manifest_version", "menu"),
         hotfoods.get("manifest_version", "hotfoods"),
     )
     return combined
@@ -476,29 +476,31 @@ def main():
             last_config_fingerprint = fingerprint
         old_state = read_json(STATE, {}) or {}
         try:
-            rotating_combo_hotfoods = config.get("playback_mode") == "alternate_combo_hotfoods"
-            if rotating_combo_hotfoods:
+            rotation_mode = config.get("playback_mode")
+            rotating_hotfoods = rotation_mode in ("alternate_combo_hotfoods", "alternate_alacarte_hotfoods")
+            if rotating_hotfoods:
                 # The two resources can change independently. Fetch complete
                 # representations so a mixed 200/304 cycle can never publish
                 # half of a rotation.
-                _, combo_manifest, _ = fetch(config, None, "combo")
+                menu_screen = "alacarte" if rotation_mode == "alternate_alacarte_hotfoods" else "combo"
+                _, menu_manifest, _ = fetch(config, None, menu_screen)
                 _, hotfoods_manifest, _ = fetch(config, None, "hotfoods")
-                combo_manifest = validate_manifest(combo_manifest, "combo")
+                menu_manifest = validate_manifest(menu_manifest, menu_screen)
                 hotfoods_manifest = validate_manifest(hotfoods_manifest, "hotfoods")
-                prepare_runtime_fields(combo_manifest)
+                prepare_runtime_fields(menu_manifest)
                 prepare_runtime_fields(hotfoods_manifest)
-                combo_manifest = enrich_media(combo_manifest, config.get("show_ads", True))
+                menu_manifest = enrich_media(menu_manifest, config.get("show_ads", True))
                 hotfoods_manifest = enrich_media(hotfoods_manifest, False)
-                manifest = combo_hotfoods_manifest(combo_manifest, hotfoods_manifest)
+                manifest = menu_hotfoods_manifest(menu_manifest, hotfoods_manifest)
                 prepare_runtime_fields(manifest)
                 new_state = {"ok": True, "checked_at": int(time.time()), "etag": None, "error": None, "manifest": manifest}
                 atomic_json(STATE, new_state)
                 persist_good_state(new_state)
-                log("published combo / hot foods rotation", manifest.get("manifest_version"))
+                log("published %s / hot foods rotation" % menu_screen, manifest.get("manifest_version"))
                 unchanged = False
             else:
                 etag, manifest, unchanged = fetch(config, etag)
-            if rotating_combo_hotfoods:
+            if rotating_hotfoods:
                 pass
             elif unchanged:
                 if old_state.get("manifest"):

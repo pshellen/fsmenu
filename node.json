@@ -71,7 +71,7 @@
       "title": "Playback mode",
       "name": "playback_mode",
       "type": "select",
-      "options": [["static", "Configured screen"], ["alternate", "Alternate combo / a la carte"], ["alternate_combo_hotfoods", "Alternate combo / Hot Foods"]],
+      "options": [["static", "Configured screen"], ["alternate", "Alternate combo / a la carte"], ["alternate_combo_hotfoods", "Alternate combo / Hot Foods"], ["alternate_alacarte_hotfoods", "Alternate a la carte / Hot Foods"]],
       "default": "static"
     },
     {

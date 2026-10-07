@@ -534,6 +534,9 @@ function node.render()
         elseif config.playback_mode == "alternate_combo_hotfoods" then
             local duration = math.max(5, tonumber(config.page_duration_seconds) or 25)
             layout = math.floor(sys.now()/duration)%2 == 0 and "combo" or "hotfoods"
+        elseif config.playback_mode == "alternate_alacarte_hotfoods" then
+            local duration = math.max(5, tonumber(config.page_duration_seconds) or 25)
+            layout = math.floor(sys.now()/duration)%2 == 0 and "alacarte" or "hotfoods"
         end
         if layout == "combo" then
             render_saber_edges(w,h,false)
