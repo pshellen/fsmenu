@@ -106,6 +106,8 @@ def resolve_special_day_prices(manifest, timestamp=None):
     values = list(manifest.get("combos", []))
     for category in manifest.get("categories", []):
         values.extend(category.get("items", []))
+    for category in manifest.get("hotfoods_categories", []):
+        values.extend(category.get("items", []))
     for value in values:
         value.pop("effective_display_price", None)
         value.pop("special_day_price_active", None)
@@ -159,7 +161,9 @@ def resolve_schedule_visibility(manifest, timestamp=None):
             continue
         if category_name:
             rules.setdefault(category_name, []).append(rule)
-    for category in manifest.get("categories", []):
+    categories = list(manifest.get("categories", []))
+    categories.extend(manifest.get("hotfoods_categories", []))
+    for category in categories:
         category.pop("schedule_visible", None)
         matching = rules.get(str(category.get("name") or "").strip().lower(), [])
         if not matching:
@@ -189,6 +193,10 @@ def runtime_field_signature(manifest):
         values.append(("schedule", category.get("id"), category.get("schedule_visible")))
         for item in category.get("items", []):
             values.append(("price", item.get("id"), item.get("effective_display_price")))
+    for category in manifest.get("hotfoods_categories", []):
+        values.append(("hotfoods_schedule", category.get("id"), category.get("schedule_visible")))
+        for item in category.get("items", []):
+            values.append(("hotfoods_price", item.get("id"), item.get("effective_display_price")))
     return values
 
 
@@ -228,6 +236,12 @@ def referenced_media(manifest):
         if combo.get("local_image"):
             yield combo["local_image"]
     for category in manifest.get("categories", []):
+        if category.get("local_image"):
+            yield category["local_image"]
+        for item in category.get("items", []):
+            if item.get("local_image"):
+                yield item["local_image"]
+    for category in manifest.get("hotfoods_categories", []):
         if category.get("local_image"):
             yield category["local_image"]
         for item in category.get("items", []):
@@ -414,9 +428,9 @@ def enrich_media(manifest, show_ads):
     return manifest
 
 
-def fetch(config, etag):
+def fetch(config, etag, screen_id=None):
     endpoint = str(config.get("endpoint", "")).strip()
-    params = urlencode({"location_id": selected_location_id(config), "screen_id": config.get("screen_id", "combo")})
+    params = urlencode({"location_id": selected_location_id(config), "screen_id": screen_id or config.get("screen_id", "combo")})
     url = endpoint + ("&" if "?" in endpoint else "?") + params
     headers = {"Accept": "application/json", "User-Agent": "FSCinema-info-beamer/1.0"}
     token = str(config.get("token", "")).strip()
@@ -431,6 +445,21 @@ def fetch(config, etag):
     return response.headers.get("ETag"), response.json(), False
 
 
+def combo_hotfoods_manifest(combo, hotfoods):
+    """Combine two validated screen responses into one player manifest."""
+    combined = combo
+    combined["hotfoods_categories"] = hotfoods.get("categories", [])
+    combined["hotfoods_screen"] = hotfoods.get("screen", {})
+    combined["hotfoods_media"] = hotfoods.get("hotfoods_media", [])
+    combined["hotfoods_media_urls"] = hotfoods.get("hotfoods_media_urls", [])
+    combined["schedule"] = list(combo.get("schedule", [])) + list(hotfoods.get("schedule", []))
+    combined["manifest_version"] = "%s / %s" % (
+        combo.get("manifest_version", "combo"),
+        hotfoods.get("manifest_version", "hotfoods"),
+    )
+    return combined
+
+
 def main():
     ensure_dir(CACHE)
     ensure_dir(PERSIST)
@@ -440,15 +469,38 @@ def main():
     while True:
         failed = False
         config = read_json(CONFIG, {}) or {}
-        stable_config = {k: config.get(k) for k in ("endpoint", "location", "location_id", "screen_id", "token", "show_ads")}
+        stable_config = {k: config.get(k) for k in ("endpoint", "location", "location_id", "screen_id", "token", "show_ads", "playback_mode")}
         fingerprint = hashlib.sha256(json.dumps(stable_config, sort_keys=True).encode("utf-8")).hexdigest()
         if fingerprint != last_config_fingerprint:
             etag = None
             last_config_fingerprint = fingerprint
         old_state = read_json(STATE, {}) or {}
         try:
-            etag, manifest, unchanged = fetch(config, etag)
-            if unchanged:
+            rotating_combo_hotfoods = config.get("playback_mode") == "alternate_combo_hotfoods"
+            if rotating_combo_hotfoods:
+                # The two resources can change independently. Fetch complete
+                # representations so a mixed 200/304 cycle can never publish
+                # half of a rotation.
+                _, combo_manifest, _ = fetch(config, None, "combo")
+                _, hotfoods_manifest, _ = fetch(config, None, "hotfoods")
+                combo_manifest = validate_manifest(combo_manifest, "combo")
+                hotfoods_manifest = validate_manifest(hotfoods_manifest, "hotfoods")
+                prepare_runtime_fields(combo_manifest)
+                prepare_runtime_fields(hotfoods_manifest)
+                combo_manifest = enrich_media(combo_manifest, config.get("show_ads", True))
+                hotfoods_manifest = enrich_media(hotfoods_manifest, False)
+                manifest = combo_hotfoods_manifest(combo_manifest, hotfoods_manifest)
+                prepare_runtime_fields(manifest)
+                new_state = {"ok": True, "checked_at": int(time.time()), "etag": None, "error": None, "manifest": manifest}
+                atomic_json(STATE, new_state)
+                persist_good_state(new_state)
+                log("published combo / hot foods rotation", manifest.get("manifest_version"))
+                unchanged = False
+            else:
+                etag, manifest, unchanged = fetch(config, etag)
+            if rotating_combo_hotfoods:
+                pass
+            elif unchanged:
                 if old_state.get("manifest"):
                     prepare_runtime_fields(old_state["manifest"])
                 old_state.update({"ok": True, "checked_at": int(time.time()), "etag": etag, "error": None})

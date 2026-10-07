@@ -29,7 +29,7 @@ The token field is visually masked in Hosted but is ultimately delivered to the 
 - **Screen:** Use `combo`, `alacarte`, `full`, or `hotfoods`; this becomes the endpoint's `screen_id` query value. Only locations with a Hot Foods screen configured by the web app will return `hotfoods` data.
 - **Location:** Select one of the 20 configured FSCinema locations from the dropdown, or choose Custom location ID and enter another location UUID. Existing setups using only the location ID field remain compatible.
 - **Display profile:** Must match the intended canvas. The player letterboxes safely if the physical output differs.
-- **Playback mode:** `Configured screen` renders the selected manifest normally. `Alternate combo / a la carte` uses a `full` manifest and switches between full-screen combo and à-la-carte pages; configure `screen_id=full` and typically use 1920×1080.
+- **Playback mode:** `Configured screen` renders the selected manifest normally. `Alternate combo / a la carte` uses a `full` manifest and switches between full-screen combo and à-la-carte pages; configure `screen_id=full` and typically use 1920×1080. `Alternate combo / Hot Foods` automatically fetches the `combo` and `hotfoods` manifests and switches between them, regardless of the configured Screen value.
 - **Page duration:** Number of seconds each page remains visible in alternating mode; defaults to 25 seconds.
 - **Combo upgrades placement:** When a Combo Upgrade category is present, place it at the bottom of Popcorn, Snacks, Refreshing Drinks, or on a separate card. Defaults to Popcorn; a missing target falls back to a separate card.
 - **Combo font size:** Independently scales combo names, descriptions, and prices from 75% to 250%; defaults to 100%.
@@ -85,6 +85,10 @@ The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`
 ## Overlay artwork
 
 Create the PNG at the same pixel dimensions and orientation as the selected display profile whenever possible. Keep menu-readable areas transparent and place decorative or takeover artwork only where intended. Because the overlay is the final rendering layer, it also appears above advertisements, debug status, and the offline indicator. Swap or remove the selected asset in Hosted without rebuilding the package.
+
+## Version 1.7.0
+
+Adds an `Alternate combo / Hot Foods` playback mode that fetches both screen-specific manifests and rotates between them using the configured page duration.
 
 ## Version 1.6.1
 

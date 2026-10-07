@@ -71,6 +71,10 @@ local function load_media(manifest)
         load(category.local_image)
         for _, item in ipairs(category.items or {}) do load(item.local_image) end
     end
+    for _, category in ipairs(manifest.hotfoods_categories or {}) do
+        load(category.local_image)
+        for _, item in ipairs(category.items or {}) do load(item.local_image) end
+    end
     for _, ad in ipairs(manifest.advertisements or {}) do
         local path = ad.local_media
         if path and path ~= "" then
@@ -420,7 +424,8 @@ local function render_hotfoods(manifest, w, h)
     black:draw(split, 0, w, h)
 
     local category = nil
-    for _, candidate in ipairs(manifest.categories or {}) do
+    local hotfoods_categories = manifest.hotfoods_categories or manifest.categories or {}
+    for _, candidate in ipairs(hotfoods_categories) do
         local name = string.lower(candidate.name or "")
         if name == "hot food" or name == "hot foods" then
             category = candidate
@@ -450,7 +455,8 @@ local function render_hotfoods(manifest, w, h)
     end
 
     font_region = "tax"
-    centered(0, split, h*.955, manifest.screen.tax_disclaimer or "", math.min(split,h)*.014, {0.2,0.25,0.3,1})
+    local hotfoods_screen = manifest.hotfoods_screen or manifest.screen or {}
+    centered(0, split, h*.955, hotfoods_screen.tax_disclaimer or "", math.min(split,h)*.014, {0.2,0.25,0.3,1})
     font_region = "hotfoods"
 
     if not render_media(manifest.hotfoods_media, split, 0, w, h, true) then
@@ -525,6 +531,9 @@ function node.render()
         if config.playback_mode == "alternate" then
             local duration = math.max(5, tonumber(config.page_duration_seconds) or 25)
             layout = math.floor(sys.now()/duration)%2 == 0 and "combo" or "alacarte"
+        elseif config.playback_mode == "alternate_combo_hotfoods" then
+            local duration = math.max(5, tonumber(config.page_duration_seconds) or 25)
+            layout = math.floor(sys.now()/duration)%2 == 0 and "combo" or "hotfoods"
         end
         if layout == "combo" then
             render_saber_edges(w,h,false)
