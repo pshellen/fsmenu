@@ -86,6 +86,10 @@ The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`
 
 Create the PNG at the same pixel dimensions and orientation as the selected display profile whenever possible. Keep menu-readable areas transparent and place decorative or takeover artwork only where intended. Because the overlay is the final rendering layer, it also appears above advertisements, debug status, and the offline indicator. Swap or remove the selected asset in Hosted without rebuilding the package.
 
+## Version 1.7.2
+
+Restores conditional HTTP caching for the two feeds used by Combo/Hot Foods and A la carte/Hot Foods rotation modes, avoiding redundant manifest processing and media-cache scans when a screen has not changed.
+
 ## Version 1.7.1
 
 Adds an `Alternate a la carte / Hot Foods` playback mode.

@@ -447,7 +447,9 @@ def fetch(config, etag, screen_id=None):
 
 def menu_hotfoods_manifest(menu, hotfoods):
     """Combine a combo or a-la-carte response with a Hot Foods response."""
-    combined = menu
+    # Do not mutate the cached source manifest. Keeping the two source objects
+    # independent lets each endpoint use its own ETag on later refreshes.
+    combined = dict(menu)
     combined["hotfoods_categories"] = hotfoods.get("categories", [])
     combined["hotfoods_screen"] = hotfoods.get("screen", {})
     combined["hotfoods_media"] = hotfoods.get("hotfoods_media", [])
@@ -465,6 +467,8 @@ def main():
     ensure_dir(PERSIST)
     restore_persistent_state()
     etag = None
+    rotation_etags = {}
+    rotation_manifests = {}
     last_config_fingerprint = None
     while True:
         failed = False
@@ -473,27 +477,37 @@ def main():
         fingerprint = hashlib.sha256(json.dumps(stable_config, sort_keys=True).encode("utf-8")).hexdigest()
         if fingerprint != last_config_fingerprint:
             etag = None
+            rotation_etags = {}
+            rotation_manifests = {}
             last_config_fingerprint = fingerprint
         old_state = read_json(STATE, {}) or {}
         try:
             rotation_mode = config.get("playback_mode")
             rotating_hotfoods = rotation_mode in ("alternate_combo_hotfoods", "alternate_alacarte_hotfoods")
             if rotating_hotfoods:
-                # The two resources can change independently. Fetch complete
-                # representations so a mixed 200/304 cycle can never publish
-                # half of a rotation.
                 menu_screen = "alacarte" if rotation_mode == "alternate_alacarte_hotfoods" else "combo"
-                _, menu_manifest, _ = fetch(config, None, menu_screen)
-                _, hotfoods_manifest, _ = fetch(config, None, "hotfoods")
-                menu_manifest = validate_manifest(menu_manifest, menu_screen)
-                hotfoods_manifest = validate_manifest(hotfoods_manifest, "hotfoods")
+                for screen_id in (menu_screen, "hotfoods"):
+                    next_etag, next_manifest, unchanged = fetch(
+                        config, rotation_etags.get(screen_id), screen_id
+                    )
+                    rotation_etags[screen_id] = next_etag
+                    if not unchanged:
+                        next_manifest = validate_manifest(next_manifest, screen_id)
+                        prepare_runtime_fields(next_manifest)
+                        next_manifest = enrich_media(
+                            next_manifest,
+                            config.get("show_ads", True) if screen_id == menu_screen else False,
+                        )
+                        rotation_manifests[screen_id] = next_manifest
+                    elif screen_id not in rotation_manifests:
+                        raise ValueError("%s manifest cache is empty after 304" % screen_id)
+                menu_manifest = rotation_manifests[menu_screen]
+                hotfoods_manifest = rotation_manifests["hotfoods"]
                 prepare_runtime_fields(menu_manifest)
                 prepare_runtime_fields(hotfoods_manifest)
-                menu_manifest = enrich_media(menu_manifest, config.get("show_ads", True))
-                hotfoods_manifest = enrich_media(hotfoods_manifest, False)
                 manifest = menu_hotfoods_manifest(menu_manifest, hotfoods_manifest)
                 prepare_runtime_fields(manifest)
-                new_state = {"ok": True, "checked_at": int(time.time()), "etag": None, "error": None, "manifest": manifest}
+                new_state = {"ok": True, "checked_at": int(time.time()), "etag": rotation_etags, "error": None, "manifest": manifest}
                 atomic_json(STATE, new_state)
                 persist_good_state(new_state)
                 log("published %s / hot foods rotation" % menu_screen, manifest.get("manifest_version"))
