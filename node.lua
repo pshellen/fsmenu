@@ -230,7 +230,7 @@ local function render_offline_indicator(w, h)
     offline_logo:draw(w-margin-indicator_w, h-margin-indicator_h, w-margin, h-margin, .88)
 end
 
-local function render_media(values, x1, y1, x2, y2, preserve_aspect)
+local function render_media(values, x1, y1, x2, y2, preserve_aspect, vertical_align)
     local ads = {}
     for _, ad in ipairs(values or {}) do
         local holder = ad_media[ad.local_media]
@@ -258,16 +258,28 @@ local function render_media(values, x1, y1, x2, y2, preserve_aspect)
     end
     local holder = selected and ad_media[selected.local_media]
     if not holder then return false end
-    if preserve_aspect then
+    local rendered_height = y2 - y1
+    if preserve_aspect and vertical_align == "top" then
+        local ok, status, iw, ih = pcall(function() return holder.resource:state() end)
+        if ok and iw and ih and iw > 0 and ih > 0 then
+            local scale = math.min((x2-x1)/iw, (y2-y1)/ih)
+            local draw_w, draw_h = iw*scale, ih*scale
+            local draw_x = x1 + ((x2-x1)-draw_w)/2
+            holder.resource:draw(draw_x, y1, draw_x+draw_w, y1+draw_h)
+            rendered_height = draw_h
+        else
+            util.draw_correct(holder.resource, x1, y1, x2, y2)
+        end
+    elseif preserve_aspect then
         util.draw_correct(holder.resource, x1, y1, x2, y2)
     else
         holder.resource:draw(x1, y1, x2, y2)
     end
-    return true
+    return true, rendered_height
 end
 
-local function render_advertisement(manifest, x1, y1, x2, y2, preserve_aspect)
-    return render_media(manifest.advertisements, x1, y1, x2, y2, preserve_aspect)
+local function render_advertisement(manifest, x1, y1, x2, y2, preserve_aspect, vertical_align)
+    return render_media(manifest.advertisements, x1, y1, x2, y2, preserve_aspect, vertical_align)
 end
 
 local function render_combo(manifest, w, h, with_ads)
@@ -275,11 +287,17 @@ local function render_combo(manifest, w, h, with_ads)
     local combos = sorted_available(manifest.combos)
     local margin, gap = w * 0.018, w * 0.008
     local grid_top
-    -- Advertisements are commonly authored at 16:9. Preserve their aspect
-    -- ratio so portrait profiles letterbox them instead of stretching them.
-    local has_ad = with_ads and render_advertisement(manifest, 0, 0, w, h * 0.5, true)
+    local has_ad, ad_height
+    if with_ads and h > w then
+        -- Portrait layouts top-align the original artwork and reclaim unused
+        -- letterbox space for the combo grid below it.
+        has_ad, ad_height = render_advertisement(manifest, 0, 0, w, h * 0.5, true, "top")
+    elseif with_ads then
+        -- Preserve the established horizontal rendering behavior.
+        has_ad, ad_height = render_advertisement(manifest, 0, 0, w, h * 0.5, false)
+    end
     if has_ad then
-        grid_top = h * 0.5 + margin
+        grid_top = (ad_height or h * 0.5) + margin
     else
         local top = h * 0.035
         centered(0, w, top, "COMBOS", math.min(w, h) * 0.052, {0.03, 0.16, 0.34, 1})
