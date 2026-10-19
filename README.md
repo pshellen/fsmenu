@@ -87,6 +87,10 @@ The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`
 
 Create the PNG at the same pixel dimensions and orientation as the selected display profile whenever possible. Keep menu-readable areas transparent and place decorative or takeover artwork only where intended. Because the overlay is the final rendering layer, it also appears above advertisements, debug status, and the offline indicator. Swap or remove the selected asset in Hosted without rebuilding the package.
 
+## Version 1.8.1
+
+Preserves advertisement image and video aspect ratios in portrait layouts, preventing landscape artwork from being stretched into the vertical advertisement region.
+
 ## Version 1.8.0
 
 Adds a Hosted **Output rotation** setting for no rotation, 90° clockwise, 180°, and 270° clockwise. The complete composed canvas is rotated and automatically fitted to the physical output, including menus, advertising, overlays, offline status, and debug text.

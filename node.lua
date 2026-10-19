@@ -275,7 +275,9 @@ local function render_combo(manifest, w, h, with_ads)
     local combos = sorted_available(manifest.combos)
     local margin, gap = w * 0.018, w * 0.008
     local grid_top
-    local has_ad = with_ads and render_advertisement(manifest, 0, 0, w, h * 0.5)
+    -- Advertisements are commonly authored at 16:9. Preserve their aspect
+    -- ratio so portrait profiles letterbox them instead of stretching them.
+    local has_ad = with_ads and render_advertisement(manifest, 0, 0, w, h * 0.5, true)
     if has_ad then
         grid_top = h * 0.5 + margin
     else
