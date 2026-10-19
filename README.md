@@ -29,6 +29,7 @@ The token field is visually masked in Hosted but is ultimately delivered to the 
 - **Screen:** Use `combo`, `alacarte`, `full`, or `hotfoods`; this becomes the endpoint's `screen_id` query value. Only locations with a Hot Foods screen configured by the web app will return `hotfoods` data.
 - **Location:** Select one of the 20 configured FSCinema locations from the dropdown, or choose Custom location ID and enter another location UUID. Existing setups using only the location ID field remain compatible.
 - **Display profile:** Must match the intended canvas. The player letterboxes safely if the physical output differs.
+- **Output rotation:** Rotates the entire composed menu clockwise by 90°, 180°, or 270° and automatically fits the rotated canvas to the physical output. Existing setups default to no rotation.
 - **Playback mode:** `Configured screen` renders the selected manifest normally. `Alternate combo / a la carte` uses a `full` manifest and switches between full-screen combo and à-la-carte pages; configure `screen_id=full` and typically use 1920×1080. `Alternate combo / Hot Foods` automatically fetches the `combo` and `hotfoods` manifests. `Alternate a la carte / Hot Foods` does the same with the `alacarte` and `hotfoods` manifests. Both Hot Foods modes ignore the configured Screen value and use the page duration for rotation timing.
 - **Page duration:** Number of seconds each page remains visible in alternating mode; defaults to 25 seconds.
 - **Combo upgrades placement:** When a Combo Upgrade category is present, place it at the bottom of Popcorn, Snacks, Refreshing Drinks, or on a separate card. Defaults to Popcorn; a missing target falls back to a separate card.
@@ -48,7 +49,7 @@ Values above 125% are provided for on-device assessment and may cause clipping o
 
 When a refresh fails after at least one successful sync, the last saved menu remains on screen and a small Flagship Cinemas Premium Support logo appears in the lower-right corner. The indicator disappears automatically after connectivity recovers.
 
-The endpoint's `screen.orientation` and source dimensions are retained as data, while the explicit Hosted display profile controls the physical composition. Configure the device/TV rotation separately for portrait installations.
+The endpoint's `screen.orientation` and source dimensions are retained as data, while the explicit Hosted display profile controls the physical composition. Use **Output rotation** when the player must rotate the complete rendered menu instead of relying on device or TV rotation.
 
 ## Hot Foods screen
 
@@ -85,6 +86,10 @@ The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`
 ## Overlay artwork
 
 Create the PNG at the same pixel dimensions and orientation as the selected display profile whenever possible. Keep menu-readable areas transparent and place decorative or takeover artwork only where intended. Because the overlay is the final rendering layer, it also appears above advertisements, debug status, and the offline indicator. Swap or remove the selected asset in Hosted without rebuilding the package.
+
+## Version 1.8.0
+
+Adds a Hosted **Output rotation** setting for no rotation, 90° clockwise, 180°, and 270° clockwise. The complete composed canvas is rotated and automatically fitted to the physical output, including menus, advertising, overlays, offline status, and debug text.
 
 ## Version 1.7.2
 

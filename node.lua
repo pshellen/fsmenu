@@ -19,7 +19,7 @@ for index = 1, 12 do
     }
 end
 local saber_core = resource.create_colored_texture(0.78, 0.96, 1, 0.72)
-local config = { display_profile = "3840x1080", playback_mode = "static", page_duration_seconds = 25, combo_upgrades_placement = "popcorn", combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, refreshing_drinks_title_font_scale_percent = 100, refreshing_drinks_font_scale_percent = 100, hotfoods_font_scale_percent = 100, tax_font_scale_percent = 100, theme_overlay_fit = "stretch", theme_overlay_opacity_percent = 100, debug = false }
+local config = { display_profile = "3840x1080", output_rotation = "0", playback_mode = "static", page_duration_seconds = 25, combo_upgrades_placement = "popcorn", combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, refreshing_drinks_title_font_scale_percent = 100, refreshing_drinks_font_scale_percent = 100, hotfoods_font_scale_percent = 100, tax_font_scale_percent = 100, theme_overlay_fit = "stretch", theme_overlay_opacity_percent = 100, debug = false }
 local state = nil
 local font_region = nil
 local theme_overlay = nil
@@ -515,10 +515,24 @@ function node.render()
     gl.clear(1, 1, 1, 1)
     local profile = profiles[config.display_profile] or profiles["3840x1080"]
     local w, h = profile[1], profile[2]
-    local scale = math.min(NATIVE_WIDTH/w, NATIVE_HEIGHT/h)
+    local rotation = tonumber(config.output_rotation) or 0
+    if rotation ~= 90 and rotation ~= 180 and rotation ~= 270 then rotation = 0 end
+    local rotated_w = (rotation == 90 or rotation == 270) and h or w
+    local rotated_h = (rotation == 90 or rotation == 270) and w or h
+    local scale = math.min(NATIVE_WIDTH/rotated_w, NATIVE_HEIGHT/rotated_h)
     gl.pushMatrix()
-    gl.translate((NATIVE_WIDTH-w*scale)/2, (NATIVE_HEIGHT-h*scale)/2)
+    gl.translate((NATIVE_WIDTH-rotated_w*scale)/2, (NATIVE_HEIGHT-rotated_h*scale)/2)
     gl.scale(scale, scale)
+    if rotation == 90 then
+        gl.translate(h, 0)
+        gl.rotate(90, 0, 0, 1)
+    elseif rotation == 180 then
+        gl.translate(w, h)
+        gl.rotate(180, 0, 0, 1)
+    elseif rotation == 270 then
+        gl.translate(0, w)
+        gl.rotate(270, 0, 0, 1)
+    end
     surface:draw(0, 0, w, h)
     if not state or not state.manifest then
         centered(0, w, h*.45, "Waiting for menu data…", math.min(w,h)*.05)
