@@ -339,8 +339,6 @@ local function render_categories(manifest, w, h)
             drinks[#drinks + 1] = category
         elseif name == "combo upgrades" or name == "combo upgrade" then
             upgrades[#upgrades + 1] = category
-        elseif name == "hot food" or name == "hot foods" then
-            -- Hot Food has its own scheduled screen layout.
         else
             categories[#categories + 1] = category
         end

@@ -87,6 +87,10 @@ The package includes Poppins Bold under the SIL Open Font License; see `OFL.txt`
 
 Create the PNG at the same pixel dimensions and orientation as the selected display profile whenever possible. Keep menu-readable areas transparent and place decorative or takeover artwork only where intended. Because the overlay is the final rendering layer, it also appears above advertisements, debug status, and the offline indicator. Swap or remove the selected asset in Hosted without rebuilding the package.
 
+## Version 1.8.3
+
+Allows `Hot Food` and `Hot Foods` categories returned in an a-la-carte or full manifest to render as normal menu cards. Dedicated Hot Foods playback and rotation continue to use the separate Hot Foods screen data.
+
 ## Version 1.8.2
 
 In portrait layouts, top-aligns advertisements at their natural aspect ratio and starts the combo grid immediately below the actual rendered banner height. This gives the combo cards the unused letterbox space while preserving established horizontal advertisement rendering.
