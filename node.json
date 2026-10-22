@@ -82,6 +82,12 @@
       "default": "static"
     },
     {
+      "title": "Always hide Hot Foods",
+      "name": "hide_hotfoods_always",
+      "type": "boolean",
+      "default": false
+    },
+    {
       "title": "Page duration",
       "name": "page_duration_seconds",
       "type": "integer",

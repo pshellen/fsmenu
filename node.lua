@@ -19,7 +19,7 @@ for index = 1, 12 do
     }
 end
 local saber_core = resource.create_colored_texture(0.78, 0.96, 1, 0.72)
-local config = { display_profile = "3840x1080", output_rotation = "0", playback_mode = "static", page_duration_seconds = 25, combo_upgrades_placement = "popcorn", combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, refreshing_drinks_title_font_scale_percent = 100, refreshing_drinks_font_scale_percent = 100, hotfoods_font_scale_percent = 100, tax_font_scale_percent = 100, theme_overlay_fit = "stretch", theme_overlay_opacity_percent = 100, debug = false }
+local config = { display_profile = "3840x1080", output_rotation = "0", playback_mode = "static", hide_hotfoods_always = false, page_duration_seconds = 25, combo_upgrades_placement = "popcorn", combo_font_scale_percent = 100, alacarte_font_scale_percent = 100, refreshing_drinks_title_font_scale_percent = 100, refreshing_drinks_font_scale_percent = 100, hotfoods_font_scale_percent = 100, tax_font_scale_percent = 100, theme_overlay_fit = "stretch", theme_overlay_opacity_percent = 100, debug = false }
 local state = nil
 local font_region = nil
 local theme_overlay = nil
@@ -333,7 +333,9 @@ local function render_categories(manifest, w, h)
     local categories, drinks, upgrades = {}, {}, {}
     for _, category in ipairs(source) do
         local name = string.lower(category.name or "")
-        if name == "bottled water" or name == "fountain drinks" or name == "icee" or
+        if config.hide_hotfoods_always and (name == "hot food" or name == "hot foods") then
+            -- Explicit device override: never show Hot Foods on this menu.
+        elseif name == "bottled water" or name == "fountain drinks" or name == "icee" or
            name == "drinks" or name == "other drinks" or name == "beverages" or
            name == "refreshing drinks" then
             drinks[#drinks + 1] = category
@@ -437,6 +439,11 @@ end
 
 local function render_hotfoods(manifest, w, h)
     font_region = "hotfoods"
+    if config.hide_hotfoods_always then
+        white:draw(0, 0, w, h)
+        centered(0, w, h*.47, "HOT FOODS CURRENTLY UNAVAILABLE", math.min(w,h)*.034, {0.38,0.40,0.44,1})
+        return
+    end
     local split = w * 0.5
     white:draw(0, 0, split, h)
     black:draw(split, 0, w, h)
@@ -563,12 +570,16 @@ function node.render()
         if config.playback_mode == "alternate" then
             local duration = math.max(5, tonumber(config.page_duration_seconds) or 25)
             layout = math.floor(sys.now()/duration)%2 == 0 and "combo" or "alacarte"
-        elseif config.playback_mode == "alternate_combo_hotfoods" then
+        elseif config.playback_mode == "alternate_combo_hotfoods" and not config.hide_hotfoods_always then
             local duration = math.max(5, tonumber(config.page_duration_seconds) or 25)
             layout = math.floor(sys.now()/duration)%2 == 0 and "combo" or "hotfoods"
-        elseif config.playback_mode == "alternate_alacarte_hotfoods" then
+        elseif config.playback_mode == "alternate_combo_hotfoods" then
+            layout = "combo"
+        elseif config.playback_mode == "alternate_alacarte_hotfoods" and not config.hide_hotfoods_always then
             local duration = math.max(5, tonumber(config.page_duration_seconds) or 25)
             layout = math.floor(sys.now()/duration)%2 == 0 and "alacarte" or "hotfoods"
+        elseif config.playback_mode == "alternate_alacarte_hotfoods" then
+            layout = "alacarte"
         end
         if layout == "combo" then
             render_saber_edges(w,h,false)

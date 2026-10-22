@@ -473,7 +473,7 @@ def main():
     while True:
         failed = False
         config = read_json(CONFIG, {}) or {}
-        stable_config = {k: config.get(k) for k in ("endpoint", "location", "location_id", "screen_id", "token", "show_ads", "playback_mode")}
+        stable_config = {k: config.get(k) for k in ("endpoint", "location", "location_id", "screen_id", "token", "show_ads", "playback_mode", "hide_hotfoods_always")}
         fingerprint = hashlib.sha256(json.dumps(stable_config, sort_keys=True).encode("utf-8")).hexdigest()
         if fingerprint != last_config_fingerprint:
             etag = None
@@ -483,7 +483,13 @@ def main():
         old_state = read_json(STATE, {}) or {}
         try:
             rotation_mode = config.get("playback_mode")
-            rotating_hotfoods = rotation_mode in ("alternate_combo_hotfoods", "alternate_alacarte_hotfoods")
+            hide_hotfoods = bool(config.get("hide_hotfoods_always", False))
+            rotating_hotfoods = rotation_mode in ("alternate_combo_hotfoods", "alternate_alacarte_hotfoods") and not hide_hotfoods
+            effective_screen = config.get("screen_id", "combo")
+            if hide_hotfoods and rotation_mode == "alternate_combo_hotfoods":
+                effective_screen = "combo"
+            elif hide_hotfoods and rotation_mode == "alternate_alacarte_hotfoods":
+                effective_screen = "alacarte"
             if rotating_hotfoods:
                 menu_screen = "alacarte" if rotation_mode == "alternate_alacarte_hotfoods" else "combo"
                 for screen_id in (menu_screen, "hotfoods"):
@@ -513,7 +519,7 @@ def main():
                 log("published %s / hot foods rotation" % menu_screen, manifest.get("manifest_version"))
                 unchanged = False
             else:
-                etag, manifest, unchanged = fetch(config, etag)
+                etag, manifest, unchanged = fetch(config, etag, effective_screen)
             if rotating_hotfoods:
                 pass
             elif unchanged:
@@ -524,7 +530,7 @@ def main():
                 if old_state.get("manifest"):
                     persist_good_state(old_state)
             else:
-                manifest = validate_manifest(manifest, config.get("screen_id", "combo"))
+                manifest = validate_manifest(manifest, effective_screen)
                 prepare_runtime_fields(manifest)
                 manifest = enrich_media(manifest, config.get("show_ads", True))
                 new_state = {"ok": True, "checked_at": int(time.time()), "etag": etag, "error": None, "manifest": manifest}
